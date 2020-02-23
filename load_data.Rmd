@@ -1,0 +1,11 @@
+---
+title: "Load Data"
+author: "Basketball Team"
+date: "2/23/2020"
+output: pdf_document
+---
+
+```{r}
+https://www.basketball-reference.com/contracts/players.html
+
+```

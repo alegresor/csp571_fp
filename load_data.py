@@ -4,7 +4,7 @@ import pandas as pd
 
 class DataLoader(object):
 
-    def __init__(self, path, x_attributes, y_attributes, x_days, y_days, step, train_frac):
+    def __init__(self, path, x_attributes, y_attributes, x_days, y_days, step, train_frac):#, bs_train, bs_test):
         """
         Args:
             path (str): path to DataFrame
@@ -14,6 +14,8 @@ class DataLoader(object):
             y_days (int): number of days of data to return as label
             step (int): number of days to window
             train_frac (float): fraction of data to use for training
+            bs_train (int): batch size train
+            bs_test (int): batch size test
         """
         self.path = path
         self.x_attributes = x_attributes
@@ -22,6 +24,8 @@ class DataLoader(object):
         self.y_days = y_days
         self.step = step
         self.train_frac = train_frac
+        #self.bs_train = bs_train
+        #self.bs_test = bs_test
         df = pd.read_csv(path)
         self.x_vals = df[self.x_attributes].values
         self.y_vals = df[self.y_attributes].values
@@ -48,30 +52,28 @@ class DataLoader(object):
                 y = self.y_vals[day_split:day_end]
                 yield x,y
         return train_loader,test_loader
-    
-# Example with GOOG data
-goog_dl = DataLoader(
-    path = 'data/original/GOOG_history.csv',
-    x_attributes=['Date','Open'],
-    y_attributes=['Date','Close'],
-    x_days = 5,
-    y_days = 2,
-    step = 3,
-    train_frac=2/3)
-goog_train_l,goog_test_l = goog_dl.get_loaders()
 
-for i,(x,y) in enumerate(goog_train_l()):
-    pass
-    print('Train x_%d \t%s\n\t%s'%(i,str(x.shape),str(x).replace('\n','\n\t')))
-    print('Train y_%d \t%s\n\t%s\n'%(i,str(y.shape),str(y).replace('\n','\n\t')))
+if __name__ == '__main__':
+    # Example with GOOG data
+    goog_dl = DataLoader(
+        path = 'data/original/GOOG_history.csv',
+        x_attributes=['Date','Open'],
+        y_attributes=['Date','Close'],
+        x_days = 5,
+        y_days = 2,
+        step = 3,
+        train_frac = 2/3)
+    goog_train_l,goog_test_l = goog_dl.get_loaders()
 
-print('~'*100)
+    for i,(x,y) in enumerate(goog_train_l()):
+        pass
+        print('Train x_%d \t%s\n\t%s'%(i,str(x.shape),str(x).replace('\n','\n\t')))
+        print('Train y_%d \t%s\n\t%s\n'%(i,str(y.shape),str(y).replace('\n','\n\t')))
 
-for i,(x,y) in enumerate(goog_test_l()):
-    print('Test x_%d \t%s\n\t%s'%(i,str(x.shape),str(x).replace('\n','\n\t')))
-    print('Test y_%d \t%s\n\t%s\n'%(i,str(y.shape),str(y).replace('\n','\n\t')))
-    if i>10:
-        break
+    print('~'*100)
 
-
-
+    for i,(x,y) in enumerate(goog_test_l()):
+        print('Test x_%d \t%s\n\t%s'%(i,str(x.shape),str(x).replace('\n','\n\t')))
+        print('Test y_%d \t%s\n\t%s\n'%(i,str(y.shape),str(y).replace('\n','\n\t')))
+        if i>10:
+            break
