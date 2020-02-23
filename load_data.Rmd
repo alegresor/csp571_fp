@@ -6,6 +6,29 @@ output: pdf_document
 ---
 
 ```{r}
-https://www.basketball-reference.com/contracts/players.html
-
+library(stringr)
+library('rvest')
+library('tidyr')
+root <- 'https://www.basketball-reference.com'
+salaries_url <- paste0(root,'/contracts/players.html')
+webpage <- read_html(salaries_url)
+salary_tables <- html_nodes(webpage, css = 'table')
+salary_table <- html_table(salary_tables[[1]])[-(1),]
+nrows <- nrow(salary_table)
+# remove divider rows and reindex
+salary_table <- salary_table[-c(seq(21,nrows,22),seq(22,nrows,22)),]
+row.names(salary_table) <- NULL
+# rename columns
+salary_years <- c('2019-2020','2020-2021','2021-2022','2022-2023','2023-2024','2024-2025')
+salary_cols <- paste0('Salary ',salary_years)
+colnames(salary_table) = c('PK','Player','Team',salary_cols,'Signed Using','Guaranteed')
+# convert some columns character -> numeric
+for (col in c('Guaranteed',salary_cols)){salary_table[,col] <- as.numeric(gsub('\\$|,','',salary_table[[col]]))}
+# add links
+table_links <- html_attr(html_nodes(webpage,xpath = "//td/a"),"href")
+player_links <- paste0(root,table_links[seq(1,length(table_links),2)])
+salary_table$Link <- as.character(player_links)
+# print results
+salary_table
+#summary(salary_table)
 ```
