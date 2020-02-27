@@ -5,30 +5,95 @@ date: "2/23/2020"
 output: pdf_document
 ---
 
+## Packages & directory structure
 ```{r}
 library(stringr)
 library('rvest')
 library('tidyr')
-root <- 'https://www.basketball-reference.com'
-salaries_url <- paste0(root,'/contracts/players.html')
-webpage <- read_html(salaries_url)
-salary_tables <- html_nodes(webpage, css = 'table')
-salary_table <- html_table(salary_tables[[1]])[-(1),]
-nrows <- nrow(salary_table)
-# remove divider rows and reindex
-salary_table <- salary_table[-c(seq(21,nrows,22),seq(22,nrows,22)),]
-row.names(salary_table) <- NULL
-# rename columns
-salary_years <- c('2019-2020','2020-2021','2021-2022','2022-2023','2023-2024','2024-2025')
-salary_cols <- paste0('Salary ',salary_years)
-colnames(salary_table) = c('PK','Player','Team',salary_cols,'Signed Using','Guaranteed')
-# convert some columns character -> numeric
-for (col in c('Guaranteed',salary_cols)){salary_table[,col] <- as.numeric(gsub('\\$|,','',salary_table[[col]]))}
-# add links
-table_links <- html_attr(html_nodes(webpage,xpath = "//td/a"),"href")
-player_links <- paste0(root,table_links[seq(1,length(table_links),2)])
-salary_table$Link <- as.character(player_links)
-# print results
-salary_table
-#summary(salary_table)
+dirs <- c('data','data/salary','data/salary/raw','data/salary/clean',
+          'data/player',
+          'data/nba2k','data/nba2k/raw')
+for (d in dirs){dir.create(d,showWarnings = FALSE)}
+```
+
+## Load salary data
+```{r}
+# constants
+root <- 'data/salary/raw'
+years <- c(2016,2017,2018,2019,2020)
+pages = c(14,15,15,13,14)
+url_f <- 'http://www.espn.com/nba/salaries/_/year/%d/page/%d'
+player_urls <- c()
+for (i in 1:length(years)){
+  salary_df <- vector('list',4)
+  names(salary_df) <- c('rk','name','team','salary')
+  year <- years[i]
+  page <- pages[i]
+  for (page in 1:page){
+    # load webpage 
+    url <- sprintf(url_f,year,page)
+    webpage <- read_html(url)
+    # load salary table
+    salary_tables <- html_nodes(webpage, css = 'table')
+    salary_df_page <- html_table(salary_tables[[1]])[-(1),]
+    names(salary_df_page) <- c('rk','name','team','salary')
+    salary_df <- rbind(salary_df,salary_df_page)
+    # load individual player links
+    table_links <- html_attr(html_nodes(webpage,xpath = "//td/a"),"href")
+    player_urls_page <- as.character(table_links)
+    player_urls <- c(player_urls,player_urls_page)}
+  # output
+  write.csv(salary_df,sprintf('%s/salary_%d.csv',root,year))
+  cat(sprintf('%d nrows: %d\n',year,nrow(salary_df)))}
+```
+
+## Load player data (Warning: takes 5-10 min to run)
+```{r}
+# constants
+root <- 'data/player'
+url_base <- 'https://www.espn.com/nba/player/stats/_/id/'
+pu_copy <- player_urls
+pu_copy <- unique(pu_copy[grepl('id',pu_copy)]) # unique player urls
+# player urls -> player stats urls
+for (p_url in pu_copy){
+  # load webpage 
+  url_end <- unlist(str_split(p_url,'/id/'))[2]
+  player_name <- unlist(str_split(url_end,'/'))[2]
+  p_stats_url <- paste0(url_base,url_end)
+  webpage <- read_html(p_stats_url)
+  dir1 <- sprintf('%s/%s',root,player_name)
+  dir2 <- sprintf('%s/raw',dir1,player_name)
+  # load stats table
+  if (dir.exists(dir2)){next}
+  stats_tables <- html_nodes(webpage, css = 'table')
+  if (length(stats_tables)<2 | dir.exists(dir2)){next}
+  stats_df_averages <- cbind(html_table(stats_tables[[1]]),html_table(stats_tables[[2]]))
+  # output
+  for (d in c(dir1,dir2)){dir.create(d,showWarnings = FALSE)}
+  write.csv(stats_df_averages,sprintf('%s/%s.csv',dir2,player_name))}
+```
+
+## Load NBA 2K Data
+```{r}
+# constants
+root <- 'data/nba2k/raw'
+years <- c(16,17,18,19,20)
+pages = c(84,68,72,68,46)
+url_f <- 'http://mtdb.com/%d?page=%d&sortedBy=overall&sortOrder=Descending&'
+for (i in 1:length(years)){
+  year_df <- vector('list',12)
+  names(year_df) <- c('name','position','ovr','out','ins','pla','ath','def','reb','xbox','ps4','pc')
+  year <- years[i]
+  page <- pages[i]
+  for (page in 1:page){
+    # load webpage 
+    url <- sprintf(url_f,year,page)
+    webpage <- read_html(url)
+    # load salary table
+    player_tables <- html_nodes(webpage, css = 'table')
+    player_df_page <- html_table(player_tables[[1]])#[-(1),]
+    names(player_df_page) <- c('name','position','ovr','out','ins','pla','ath','def','reb','xbox','ps4','pc')
+    year_df <- rbind(year_df,player_df_page)}
+  write.csv(year_df,sprintf('%s/nba2k_%d.csv',root,year))
+  cat(sprintf('%d nrows: %d\n',year,nrow(year_df)))}
 ```
