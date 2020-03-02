@@ -1,0 +1,41 @@
+---
+title: "Load Data"
+author: "Basketball Team"
+date: "2/23/2020"
+output: pdf_document
+---
+
+## Packages & directory structure
+```{r message=F}
+library(stringr)
+library(rvest)
+library(tidyr)
+dirs <- c('data', 'data/raw','data/raw/nba2k')
+for (d in dirs){dir.create(d,showWarnings = FALSE)}
+```
+
+## Load NBA 2K Data
+Note: Primary dataset is directly downloaded from Kaggle. This video-game rankings dataset is scraped from http://mtdb.com/20
+```{r}
+# constants
+root <- 'data/raw/nba2k'
+years <- c(16,17,18,19,20)
+pages = c(84,68,72,68,46)
+url_f <- 'http://mtdb.com/%d?page=%d&sortedBy=overall&sortOrder=Descending&'
+for (i in 1:length(years)){
+  year_df <- vector('list',12)
+  names(year_df) <- c('name','position','ovr','out','ins','pla','ath','def','reb','xbox','ps4','pc')
+  year <- years[i]
+  page <- pages[i]
+  for (page in 1:page){
+    # load webpage 
+    url <- sprintf(url_f,year,page)
+    webpage <- read_html(url)
+    # load salary table
+    player_tables <- html_nodes(webpage, css = 'table')
+    player_df_page <- html_table(player_tables[[1]])#[-(1),]
+    names(player_df_page) <- c('name','position','ovr','out','ins','pla','ath','def','reb','xbox','ps4','pc')
+    year_df <- rbind(year_df,player_df_page)}
+  write.csv(year_df,sprintf('%s/nba2k_%d.csv',root,year))
+  cat(sprintf('%d nrows: %d\n',year,nrow(year_df)))}
+```

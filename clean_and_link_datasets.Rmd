@@ -1,0 +1,41 @@
+---
+title: "Clean and Link Datasets"
+author: "Basketball Team"
+date: "3/2/2020"
+output: pdf_document
+---
+We will preform some basic cleaning and linking of the primary and secondary datasets in order to 
+
+## Pool 2k Data
+Pull nba 2k ratings 
+```{r}
+path_f = 'data/raw/nba2k/nba2k_%d.csv'
+for (year in c(16:20)){
+  df_year <- read.csv(sprintf(path_f,year))
+  headers <- names(df_year)
+  names(df_year) <- c('drop1',headers[1:length(headers)-1])
+  df_year <- df_year[,c('name','position','ovr','out','ins','pla','ath','def','reb')]
+  names(df_year) <- c('name','position_s','overall','outside','inside','playmaking','athleticism','defending','rebounding')
+  df_year[,'year'] <- 2000+year
+  print(head(df_year))}
+```
+
+## Clean Primary dataset
+```{r message=F}
+library("readxl")
+df_primary <- read_excel('data/raw/primary_dataset_raw.xlsx')
+df_primary <- df_primary[,!(names(df_primary)%in%c('#','blanl','blank2'))] # drop empty/non-stat columns
+names(df_primary) <- c('year','name','salary','position_p','age','team','games','games_started','minutes_played',
+                       'player_efficiency_ranking','true_shooting_%','3PA_over_FA','free_throw_%','offensive_rebound_%',
+                       'defensive_rebound_%','total_rebound_%','assist_to_turnover_%','steal_%','block_%','turnover_%',
+                       'usage_%','offensive_wins_shares','defensive_wins_shares','win_shares','win_shares_over_48',
+                       'offensive_box_plus_minus','defensive_box_plus_minus','box_plus_minus','value_over_replacement_player',
+                       'field_goal','field_goal_attempts','field_goal_%','3_pointer','3_pointer_attempts','3_point_%',
+                       '2_pointer','2_pointer_attempts','2_point_%','effective_field_goal_%','free_throws','free_throw_attempts',
+                       'free_throw_%','offensive_rebounds','defensive_rebounds','total_rebounds','assists','steals','blocks',
+                       'turnovers','personal_fouls','points')
+df_primary <- df_primary[!is.na(df_primary[['salary']]),] # drop rows with no salaryes
+df_primary <- df_primary[df_primary$year%in%c(2016:2020),]
+head(df_primary)
+table(df_primary$year)
+```
