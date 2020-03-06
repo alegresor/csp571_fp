@@ -3,6 +3,7 @@ title: "Load Data"
 author: "Basketball Team"
 date: "2/23/2020"
 output: pdf_document
+geometry: margin=1cm
 ---
 
 ## Packages & directory structure

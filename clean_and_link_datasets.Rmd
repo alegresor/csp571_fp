@@ -1,8 +1,9 @@
 ---
 title: "Clean and Link Datasets"
-author: "Basketball Team"
+author: "Basketball Salaries Team"
 date: "3/2/2020"
 output: pdf_document
+geometry: margin=1cm
 ---
 We will preform some basic cleaning and linking of the primary and secondary datasets in order to 
 
@@ -11,26 +12,29 @@ We will preform some basic cleaning and linking of the primary and secondary dat
 library("readxl")
 df_primary <- read_excel('data/raw/primary_dataset_raw.xlsx')
 df_primary <- df_primary[,!(names(df_primary)%in%c('#','blanl','blank2'))] # drop empty/non-stat columns
-names(df_primary) <- c('year','name_p','salary','position_p','age','team','games','games_started','minutes_played',
-                       'player_efficiency_ranking','true_shooting_%','3PA_over_FA','free_throw_rate','offensive_rebound_%',
-                       'defensive_rebound_%','total_rebound_%','assist_to_turnover_%','steal_%','block_%','turnover_%',
-                       'usage_%','offensive_wins_shares','defensive_wins_shares','win_shares','win_shares_over_48',
-                       'offensive_box_plus_minus','defensive_box_plus_minus','box_plus_minus','value_over_replacement_player',
-                       'field_goal','field_goal_attempts','field_goal_%','3_pointer','3_pointer_attempts','3_point_%',
-                       '2_pointer','2_pointer_attempts','2_point_%','effective_field_goal_%','free_throws','free_throw_attempts',
-                       'free_throw_%','offensive_rebounds','defensive_rebounds','total_rebounds','assists','steals','blocks',
-                       'turnovers','personal_fouls','points')
+names(df_primary) <- c('year','name_p','salary','position_p','age','team','games','games_started',
+                       'minutes_played','player_efficiency_ranking','true_shooting_%','3PA_over_FA',
+                       'free_throw_rate','offensive_rebound_%','defensive_rebound_%','total_rebound_%',
+                       'assist_to_turnover_%','steal_%','block_%','turnover_%',
+                       'usage_%','offensive_wins_shares','defensive_wins_shares','win_shares',
+                       'win_shares_over_48','offensive_box_plus_minus','defensive_box_plus_minus',
+                       'box_plus_minus','value_over_replacement_player','field_goal','field_goal_attempts',
+                       'field_goal_%','3_pointer','3_pointer_attempts','3_point_%','2_pointer',
+                       '2_pointer_attempts','2_point_%','effective_field_goal_%','free_throws',
+                       'free_throw_attempts','free_throw_%','offensive_rebounds','defensive_rebounds',
+                       'total_rebounds','assists','steals','blocks','turnovers','personal_fouls','points')
 df_primary <- df_primary[!is.na(df_primary[['salary']]),] # drop rows with no salaryes
 df_primary <- df_primary[df_primary$year%in%c(2016:2020),]
 df_primary[is.na(df_primary)] <- 0
-head(df_primary)
+head(df_primary[,1:5])
 summary(df_primary)
 ```
 
 ## Pool 2k Data
 Pull nba 2k ratings 
 ```{r}
-secondary_attriutes <- c('name_s','position_s','overall','outside','inside','playmaking','athleticism','defending','rebounding')
+secondary_attriutes <- c('name_s','position_s','overall','outside','inside','playmaking',
+                         'athleticism','defending','rebounding')
 df_secondary <- vector('list',9)
 names(df_secondary) <- secondary_attriutes
 path_f = 'data/raw/nba2k/nba2k_%d.csv'
@@ -44,7 +48,7 @@ for (year in c(16:20)){
   df_secondary <- rbind(df_secondary,df_year)}
 df_secondary <- df_secondary[df_secondary$year%in%c(2016,2017),]
 df_secondary[is.na(df_secondary)] <- 0
-head(df_secondary)
+head(df_secondary[,1:5])
 summary(df_secondary)
 ```
 
@@ -62,9 +66,38 @@ df_secondary$name <- clean_names(df_secondary[['name_s']])
 # if multiple versions of a player, take the one with the max overall
 df_secondary_max <- aggregate(df_secondary['overall'],df_secondary[c('name','year')],max)
 df_secondary_max <- merge(df_secondary_max,df_secondary,by=c('name','year','overall'),all=F)
-df_full <- merge(df_primary,df_secondary_max,by=c('name','year'),all=F)
+df_secondary_max_2 <- aggregate(df_secondary_max['outside'],df_secondary_max[c('name','year')],max)
+df_full_s <- merge(df_secondary_max,df_secondary_max_2,by=c('name','year','outside'),all=F)
 # only take totals from players who changed teams mid-year
-# LEFT OFF HERE
-df_full
+df_p_tot <- df_primary[df_primary$team=='TOT',]
+traded_player_years <- interaction(df_primary[,c('year','name')]) %in% 
+                       interaction(df_p_tot[,c('year','name')])
+df_p_wo_tot <- df_primary[!traded_player_years,]
+df_full_p <- rbind(df_p_wo_tot,df_p_tot)
+# join datasets
+df_full <- merge(df_full_p,df_full_s,by=c('name','year'),all=F)
+df_full <- df_full[order(df_full$name,df_full$year),]
+df_full <- unique(df_full)
+head(df_full[,1:5])
 ```
 
+## Final minor cleanups
+```{r}
+drop_cols <- c('name','name_s','position_s')
+df_final <- df_full[,!(names(df_full)%in%drop_cols)]
+names(df_final)[names(df_final)=='position_p'] <- 'position'
+names(df_final)[names(df_final)=='name_p'] <- 'name'
+s_columns <- c('overall','outside','inside','playmaking','athleticism','defending','rebounding')
+df_p_final <- df_final[,!(names(df_final)%in%s_columns)]
+df_s_final <- df_final[,c('name',s_columns)]
+head(df_final[,1:5])
+head(df_p_final[,1:5])
+head(df_s_final[,1:5])
+```
+
+## Output to files
+```{r}
+write.csv(df_final,'data/pooled/complete.csv')
+write.csv(df_p_final,'data/pooled/primary.csv')
+write.csv(df_s_final,'data/pooled/secondary.csv')
+```
