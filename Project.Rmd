@@ -1,0 +1,191 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r message=F}
+library("readxl")
+df_primary <- read_excel('data/raw/primary_dataset_raw.xlsx')
+df_primary <- df_primary[,!(names(df_primary)%in%c('#','blanl','blank2'))] # drop empty/non-stat columns
+colnames(df_primary)[1:3] <- c('year','name_p','salary')
+df_primary <- df_primary[!is.na(df_primary[['salary']]),] # drop rows with no salaryes
+df_primary[is.na(df_primary)] <- 0
+df_primary <- df_primary[df_primary$year%in%c(2016:2020),]   # take 2016-2017 player data
+head(df_primary)
+summary(df_primary)
+```
+
+
+
+```{r}
+secondary_attriutes <- c('name_s','position_s','ovr','out','ins','pla','ath','def','reb')
+df_secondary <- vector('list',9)
+names(df_secondary) <- secondary_attriutes
+path_f = 'data/raw/nba2k/nba2k_%d.csv'
+for (year in c(16:20)){
+  df_year <- read.csv(sprintf(path_f,year))
+  headers <- names(df_year)
+  names(df_year) <- c('drop1',headers[1:length(headers)-1])
+  df_year <- df_year[,c('name','position','ovr','out','ins','pla','ath','def','reb')]
+  names(df_year) <- secondary_attriutes
+  df_year[,'year'] <- 2000+year
+  df_secondary <- rbind(df_secondary,df_year)}
+df_secondary[is.na(df_secondary)] <- 0
+df_secondary <- df_secondary[df_secondary$year%in%c(2016,2017),]   # take 2016-2017 2K ratings data
+head(df_secondary)
+names(df_secondary)
+```
+
+
+```{r}
+library(stringr)
+clean_names <- function(names){
+  names <- tolower(names)
+  names <- str_squish(names)
+  names <- gsub('\\.','',names)
+  names <- gsub('-',' ',names)
+  return (names)}
+df_primary$name <- clean_names(df_primary[['name_p']])
+df_secondary$name <- clean_names(df_secondary[['name_s']])
+# if multiple versions of a player, take the one with the max overall
+df_secondary_max <- aggregate(df_secondary['ovr'],df_secondary[c('name','year')],max)
+df_secondary_max <- merge(df_secondary_max,df_secondary,by=c('name','year','ovr'),all=F)
+df_secondary_max_2 <- aggregate(df_secondary_max['out'],df_secondary_max[c('name','year')],max)
+df_full_s <- merge(df_secondary_max,df_secondary_max_2,by=c('name','year','out'),all=F)
+# only take totals from players who changed teams mid-year
+df_p_tot <- df_primary[df_primary$Tm=='TOT',]
+traded_player_years <- interaction(df_primary[,c('year','name')]) %in% 
+                       interaction(df_p_tot[,c('year','name')])
+df_p_wo_tot <- df_primary[!traded_player_years,]
+df_full_p <- rbind(df_p_wo_tot,df_p_tot)
+# join datasets
+df_full <- merge(df_full_p,df_full_s,by=c('name','year'),all=F)
+df_full <- df_full[order(df_full$name,df_full$year),]
+df_full <- unique(df_full)
+head(df_full[,1:5])
+
+```
+
+
+## Final minor cleanups
+```{r}
+drop_cols <- c('name','name_s','position_s')
+df_final <- df_full[,!(names(df_full)%in%drop_cols)]
+names(df_final)[names(df_final)=='position_p'] <- 'position'
+names(df_final)[names(df_final)=='name_p'] <- 'name'
+s_columns <- c('ovr','out','ins','pla','ath','def','reb')
+df_p_final <- df_final[,!(names(df_final)%in%s_columns)]
+df_s_final <- df_final[,c('name',s_columns)]
+head(df_final)
+head(df_p_final)
+head(df_s_final)
+summary(df_final)
+summary(df_p_final)
+summary(df_s_final)
+
+```
+
+## Output to files
+```{r}
+write.csv(df_final,'data/pooled/complete.csv')
+write.csv(df_p_final,'data/pooled/primary.csv')
+write.csv(df_s_final,'data/pooled/secondary.csv')
+```
+
+## Correlation plot for primary dataset
+```{r}
+salary <- df_p_final$salary
+stats <- df_p_final[,!(names(df_p_final) %in% "salary")]
+par(mar=c(1,1,1,1))
+library(corrplot)
+d <- df_final[which(sapply(df_p_final, is.numeric))]
+corr_matrix <- cor(d,method = "pearson")
+corr_matrix
+cplot <- corrplot(corr_matrix)
+```
+
+## correlation between all variables and salary
+```{r}
+correlation_salary <- sort(corr_matrix[,'salary'],decreasing = TRUE)
+correlation_salary <- correlation_salary^2
+correlation_salary
+```
+
+## TOV% and 3PAr have a slight negetive correlation with salary which is interesting 
+## selecting the top 10 variables with positive correlation with salary excluding salary itself.
+```{r}
+variables <- names(correlation_salary[2:11])
+# correlation matrix of top 10 variables
+corr_matrix[variables,variables]  
+corrplot(corr_matrix[variables,variables])
+
+```
+
+## Checking for multicollinearity between the top 10 variables
+```{r}
+model <- lm(salary ~ WS + PTS + FG + FTA + FGA + OWS + `2P` + FT + `2PA` + VORP  , data = df_p_final)
+summary(model)
+vif(model)
+```
+
+## Remove FT variable because of singularities
+```{r}
+model <- lm(salary ~ WS + PTS + FG + FTA + FGA + OWS + `2P`  + `2PA` + VORP  , data = df_p_final)
+summary(model)
+vif(model)
+```
+
+## Remove PTS and FGA variables because they have high vif values
+```{r}
+model <- lm(salary ~ WS  + FTA + FG + OWS + `2P`  + `2PA` + VORP  , data = df_p_final)
+summary(model)
+vif(model)
+```
+
+
+## Remove 2PA variable because it have high vif factor values
+```{r}
+model <- lm(salary ~ WS  + FTA + FG + OWS + `2P`  + VORP  , data = df_p_final)
+summary(model)
+vif(model)
+```
+
+## we have 6 variables with reasonable vif values.
+library("olsrr")
+
+## All possible subsets/combinations of variables regression tests
+```{r}
+model <- lm(salary ~ WS  + FTA + FG + OWS + `2P`  + VORP  , data = df_p_final)
+plot <- ols_step_all_possible(model)
+plot
+plot(plot)
+```
+
+
+```{r}
+p <- sort(plot$adjr,decreasing = TRUE)[1]
+plot[which(plot$adjr == p ),]
+
+```
+
+
+```{r}
+model <- lm(salary ~ WS  + FTA + FG + OWS  , data = df_p_final)
+summary(model)
+vif(model)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
