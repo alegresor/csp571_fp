@@ -181,7 +181,57 @@ df_s_final[3:ncol(df_s_final)] %>%
 
 ## VARIABLE SELECTION
 
+## PRIMARY DATASET
+
 ## Dividing into training and test data
+```{r}
+set.seed(34543)
+sample <- sample(df_p_final$X, size = 0.8 * nrow(df_p_final), replace = FALSE)
+train <- df_p_final[df_p_final$X %in% sample, ]
+test <- df_p_final[!df_p_final$X %in% sample, ]
+# Always check key assumptions like below!!!
+stopifnot(nrow(train) + nrow(test) == nrow(df_p_final))
+nrow(train)
+nrow(test)
+nrow(df_p_final)
+```
+
+
+## Correlation plot for primary dataset
+```{r}
+par(mar=c(1,1,1,1))
+library(corrplot)
+d <- train[which(sapply(train, is.numeric))]
+corr_matrix <- cor(d,method = "pearson")
+cplot <- corrplot(corr_matrix)
+```
+
+## correlation between all variables and salary
+```{r}
+correlation_salary <- sort(corr_matrix[2:nrow(corr_matrix),'salary'],decreasing = TRUE)
+correlation_salary
+str(correlation_salary)
+```
+
+## Using Automated F-test-based backward selection
+
+```{r}
+library(rms)
+Varselection <- ols(salary ~ WS + PTS+FG+FTA+FGA+OWS+`X2P`+`X2PA`+VORP+MP+DWS+GS+TOV+DRB+PER+TRB+BPM+OBPM+AST+STL+`WS.48`+USG.+PF+BLK+G+AST.+TS.+FTr+eFG.+FG.+ Age+DBPM+`X2P.`+DRB.+FT.+TRB.+`X3P.`+BLK.+STL.+ORB.+TOV.+`X3PAr`, data = df_p_final)
+fastbw(Varselection, rule = "p", sls = 0.1)
+```
+
+## Checking for multicollinearity among variables.
+```{r}
+variables <- lm(salary ~ FG + OWS + MP + DWS + STL + G + Age , data = df_final)
+summary(variables)
+vif(variables) # All variables have low VIF values. So no multicollinearity.
+```
+
+
+
+## COMPLATE DATASET
+
 ```{r}
 set.seed(34543)
 sample <- sample(df_final$X, size = 0.8 * nrow(df_final), replace = FALSE)
@@ -220,14 +270,12 @@ fastbw(Varselection, rule = "p", sls = 0.1)
 ```
 
 ## Checking for multicollinearity among variables.
+
 ```{r}
 variables <- lm(salary ~  OWS + MP + DWS + STL +USG.+ G + Age + ovr  , data = df_final)
 summary(variables)
 vif(variables) # All variables have low VIF values. So no multicollinearity.
 ```
-
-
-
 
 
 
