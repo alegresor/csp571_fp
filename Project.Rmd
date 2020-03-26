@@ -1,10 +1,13 @@
 ---
-title: "R Notebook"
-output: html_notebook
+title: "CSP 571 Course Project"
+author: "Basketball Salaries Team"
+output: pdf_document
+geometry: margin=1cm
 ---
 
+## DATA CLEANING
 
-
+## Clean Primary dataset
 ```{r message=F}
 library("readxl")
 df_primary <- read_excel('data/raw/primary_dataset_raw.xlsx')
@@ -17,7 +20,8 @@ head(df_primary)
 summary(df_primary)
 ```
 
-
+## Pool 2k Data
+## Pull nba 2k ratings 
 
 ```{r}
 secondary_attriutes <- c('name_s','position_s','ovr','out','ins','pla','ath','def','reb')
@@ -38,6 +42,7 @@ head(df_secondary)
 names(df_secondary)
 ```
 
+## Link datasets
 
 ```{r}
 library(stringr)
@@ -94,90 +99,93 @@ write.csv(df_p_final,'data/pooled/primary.csv')
 write.csv(df_s_final,'data/pooled/secondary.csv')
 ```
 
+
+## DATA EXPLORATION
+
+```{r}
+df_final <- read.csv('data/pooled/complete.csv')
+
+df_s_final <- read.csv('data/pooled/secondary.csv')
+
+df_p_final <- read.csv('data/pooled/primary.csv')
+summary(df_p_final)
+str(df_p_final)
+summary(df_s_final)
+str(df_s_final)
+```
+
+## Primary data
+```{r}
+library(purrr)
+library(tidyr)
+library(ggplot2)
+df_p_final[4:ncol(df_p_final)] %>%
+  keep(is.numeric) %>% 
+  gather() %>% 
+  ggplot(aes(value))+ facet_wrap(~ key, scales = "free") + geom_histogram(aes(y=..density..), fill = "grey") + geom_density()
+ 
+```
+
+## Secondary data
+```{r}
+library(ggplot2)
+library(tidyr)
+df_s_final[3:ncol(df_s_final)] %>%
+  keep(is.numeric) %>% 
+  gather() %>% 
+    ggplot(aes(value)) + facet_wrap(~ key, scales = "free") + geom_histogram(aes(y=..density..), fill = "grey") + geom_density()
+
+```
+
+
+## VARIABLE SELECTION
+
+## Primary data
+
+## Dividing into training and test data
+```{r}
+set.seed(34543)
+sample <- sample(df_p_final$X, size = 0.8 * nrow(df_p_final), replace = FALSE)
+train <- df_p_final[df_p_final$X %in% sample, ]
+test <- df_p_final[!df_p_final$X %in% sample, ]
+# Always check key assumptions like below!!!
+stopifnot(nrow(train) + nrow(test) == nrow(df_p_final))
+nrow(train)
+nrow(test)
+nrow(df_p_final)
+```
+
+
 ## Correlation plot for primary dataset
 ```{r}
-salary <- df_p_final$salary
-stats <- df_p_final[,!(names(df_p_final) %in% "salary")]
 par(mar=c(1,1,1,1))
 library(corrplot)
-d <- df_final[which(sapply(df_p_final, is.numeric))]
+d <- train[which(sapply(train, is.numeric))]
 corr_matrix <- cor(d,method = "pearson")
-corr_matrix
 cplot <- corrplot(corr_matrix)
 ```
 
 ## correlation between all variables and salary
 ```{r}
-correlation_salary <- sort(corr_matrix[,'salary'],decreasing = TRUE)
-correlation_salary <- correlation_salary^2
+correlation_salary <- sort(corr_matrix[2:nrow(corr_matrix),'salary'],decreasing = TRUE)
 correlation_salary
+str(correlation_salary)
 ```
 
-## TOV% and 3PAr have a slight negetive correlation with salary which is interesting 
-## selecting the top 10 variables with positive correlation with salary excluding salary itself.
-```{r}
-variables <- names(correlation_salary[2:11])
-# correlation matrix of top 10 variables
-corr_matrix[variables,variables]  
-corrplot(corr_matrix[variables,variables])
-
-```
-
-## Checking for multicollinearity between the top 10 variables
-```{r}
-model <- lm(salary ~ WS + PTS + FG + FTA + FGA + OWS + `2P` + FT + `2PA` + VORP  , data = df_p_final)
-summary(model)
-vif(model)
-```
-
-## Remove FT variable because of singularities
-```{r}
-model <- lm(salary ~ WS + PTS + FG + FTA + FGA + OWS + `2P`  + `2PA` + VORP  , data = df_p_final)
-summary(model)
-vif(model)
-```
-
-## Remove PTS and FGA variables because they have high vif values
-```{r}
-model <- lm(salary ~ WS  + FTA + FG + OWS + `2P`  + `2PA` + VORP  , data = df_p_final)
-summary(model)
-vif(model)
-```
-
-
-## Remove 2PA variable because it have high vif factor values
-```{r}
-model <- lm(salary ~ WS  + FTA + FG + OWS + `2P`  + VORP  , data = df_p_final)
-summary(model)
-vif(model)
-```
-
-## we have 6 variables with reasonable vif values.
-library("olsrr")
-
-## All possible subsets/combinations of variables regression tests
-```{r}
-model <- lm(salary ~ WS  + FTA + FG + OWS + `2P`  + VORP  , data = df_p_final)
-plot <- ols_step_all_possible(model)
-plot
-plot(plot)
-```
-
+## Using Automated F-test-based backward selection
 
 ```{r}
-p <- sort(plot$adjr,decreasing = TRUE)[1]
-plot[which(plot$adjr == p ),]
-
+library(rms)
+Varselection <- ols(salary ~ WS + PTS+FG+FTA+FGA+OWS+`X2P`+`X2PA`+VORP+MP+DWS+GS+TOV+DRB+PER+TRB+BPM+OBPM+AST+STL+`WS.48`+USG.+PF+BLK+G+AST.+TS.+FTr+eFG.+FG.+ Age+DBPM+`X2P.`+DRB.+FT.+TRB.+`X3P.`+BLK.+STL.+ORB.+TOV.+`X3PAr`, data = df_p_final)
+fastbw(Varselection, rule = "p", sls = 0.1)
 ```
 
-
+## Checking for multicollinearity among variables.
 ```{r}
-model <- lm(salary ~ WS  + FTA + FG + OWS  , data = df_p_final)
-summary(model)
-vif(model)
+variables <- lm(salary ~ FG + OWS + MP + DWS  + G + Age  , data = df_p_final)
+summary(variables)
+vif(variables) # All variables have low VIF values. So no multicollinearity.
 ```
-
-
 
 
 
