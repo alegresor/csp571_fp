@@ -182,7 +182,7 @@ fastbw(Varselection, rule = "p", sls = 0.1)
 
 ## Checking for multicollinearity among variables.
 ```{r}
-variables <- lm(salary ~ FG + OWS + MP + DWS  + G + Age  , data = df_p_final)
+variables <- lm(salary ~ FG + OWS + MP + DWS + STL + G + Age  , data = df_p_final)
 summary(variables)
 vif(variables) # All variables have low VIF values. So no multicollinearity.
 ```
