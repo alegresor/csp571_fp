@@ -126,6 +126,47 @@ df_p_final[4:ncol(df_p_final)] %>%
  
 ```
 
+```{r}
+ggplot(df_final, aes(x = Tm)) + geom_bar(fill = "grey") + labs(x = "Team", title = "Players per team")
+```
+
+```{r}
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+df_final %>%
+  group_by(Tm) %>%
+  summarise(sum_salary = sum(salary)) %>%
+  ggplot(aes(x = Tm, y = sum_salary, fill = Tm)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    labs(
+        x = "Team",
+        y = "Sum of salaries",
+        title = paste(
+            "Sum of salaries per team"
+        )
+    )
+```
+
+```{r}
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+df_final %>%
+  group_by(Tm) %>%
+  summarise(mean_salary = mean(salary)) %>%
+  ggplot(aes(x = Tm, y = mean_salary, fill = Tm)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    labs(
+        x = "Team",
+        y = "mean salary",
+        title = paste(
+            "mean salary per team"
+        )
+    )
+```
 ## Secondary data
 ```{r}
 library(ggplot2)
@@ -140,19 +181,17 @@ df_s_final[3:ncol(df_s_final)] %>%
 
 ## VARIABLE SELECTION
 
-## Primary data
-
 ## Dividing into training and test data
 ```{r}
 set.seed(34543)
-sample <- sample(df_p_final$X, size = 0.8 * nrow(df_p_final), replace = FALSE)
-train <- df_p_final[df_p_final$X %in% sample, ]
-test <- df_p_final[!df_p_final$X %in% sample, ]
+sample <- sample(df_final$X, size = 0.8 * nrow(df_final), replace = FALSE)
+train <- df_final[df_final$X %in% sample, ]
+test <- df_final[!df_final$X %in% sample, ]
 # Always check key assumptions like below!!!
-stopifnot(nrow(train) + nrow(test) == nrow(df_p_final))
+stopifnot(nrow(train) + nrow(test) == nrow(df_final))
 nrow(train)
 nrow(test)
-nrow(df_p_final)
+nrow(df_final)
 ```
 
 
@@ -176,13 +215,13 @@ str(correlation_salary)
 
 ```{r}
 library(rms)
-Varselection <- ols(salary ~ WS + PTS+FG+FTA+FGA+OWS+`X2P`+`X2PA`+VORP+MP+DWS+GS+TOV+DRB+PER+TRB+BPM+OBPM+AST+STL+`WS.48`+USG.+PF+BLK+G+AST.+TS.+FTr+eFG.+FG.+ Age+DBPM+`X2P.`+DRB.+FT.+TRB.+`X3P.`+BLK.+STL.+ORB.+TOV.+`X3PAr`, data = df_p_final)
+Varselection <- ols(salary ~ WS + PTS+FG+FTA+FGA+OWS+`X2P`+`X2PA`+VORP+MP+DWS+GS+TOV+DRB+PER+TRB+BPM+OBPM+AST+STL+`WS.48`+USG.+PF+BLK+G+AST.+TS.+FTr+eFG.+FG.+ Age+DBPM+`X2P.`+DRB.+FT.+TRB.+`X3P.`+BLK.+STL.+ORB.+TOV.+`X3PAr`+ovr+def+ins+ath+out+pla+reb, data = df_final)
 fastbw(Varselection, rule = "p", sls = 0.1)
 ```
 
 ## Checking for multicollinearity among variables.
 ```{r}
-variables <- lm(salary ~ FG + OWS + MP + DWS + STL + G + Age  , data = df_p_final)
+variables <- lm(salary ~  OWS + MP + DWS + STL +USG.+ G + Age + ovr  , data = df_final)
 summary(variables)
 vif(variables) # All variables have low VIF values. So no multicollinearity.
 ```
