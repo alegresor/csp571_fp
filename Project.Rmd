@@ -5,9 +5,39 @@ output: pdf_document
 geometry: margin=1cm
 ---
 
-## DATA CLEANING
+# Load, Clean, and Link Data
 
-## Clean Primary dataset
+## Load NBA 2K Data
+Note: Primary dataset is directly downloaded from Kaggle. This video-game rankings dataset is scraped from http://mtdb.com/20
+```{r message=F}
+library(stringr)
+library(rvest)
+library(tidyr)
+if (!file.exists('data/raw/nba2k/nba2k_16.csv')){ # only run if data is not already scraped
+# constants
+root <- 'data/raw/nba2k'
+years <- c(16,17,18,19,20)
+pages = c(84,68,72,68,46)
+url_f <- 'http://mtdb.com/%d?page=%d&sortedBy=overall&sortOrder=Descending&'
+for (i in 1:length(years)){
+  year_df <- vector('list',12)
+  names(year_df) <- c('name','position','ovr','out','ins','pla','ath','def','reb','xbox','ps4','pc')
+  year <- years[i]
+  page <- pages[i]
+  for (page in 1:page){
+    # load webpage 
+    url <- sprintf(url_f,year,page)
+    webpage <- read_html(url)
+    # load salary table
+    player_tables <- html_nodes(webpage, css = 'table')
+    player_df_page <- html_table(player_tables[[1]])#[-(1),]
+    names(player_df_page) <- c('name','position','ovr','out','ins','pla','ath','def','reb','xbox','ps4','pc')
+    year_df <- rbind(year_df,player_df_page)}
+  write.csv(year_df,sprintf('%s/nba2k_%d.csv',root,year))
+  cat(sprintf('%d nrows: %d\n',year,nrow(year_df)))}}
+```
+
+## Clean Primary Dataset
 ```{r message=F}
 library("readxl")
 df_primary <- read_excel('data/raw/primary_dataset_raw.xlsx')
@@ -20,9 +50,7 @@ head(df_primary)
 summary(df_primary)
 ```
 
-## Pool 2k Data
-## Pull nba 2k ratings 
-
+## Pool Together and Clean NBA 2K Data (Secondary Dataset)
 ```{r}
 secondary_attriutes <- c('name_s','position_s','ovr','out','ins','pla','ath','def','reb')
 df_secondary <- vector('list',9)
@@ -39,11 +67,10 @@ for (year in c(16:20)){
 df_secondary[is.na(df_secondary)] <- 0
 df_secondary <- df_secondary[df_secondary$year%in%c(2016,2017),]   # take 2016-2017 2K ratings data
 head(df_secondary)
-names(df_secondary)
+summary(df_secondary)
 ```
 
-## Link datasets
-
+## Merge Primary and Secondary Datasets
 ```{r}
 library(stringr)
 clean_names <- function(names){
@@ -73,64 +100,60 @@ head(df_full[,1:5])
 
 ```
 
-
-## Final minor cleanups
+## Clean Up Merged Data and 
 ```{r}
 drop_cols <- c('name','name_s','position_s')
 df_final <- df_full[,!(names(df_full)%in%drop_cols)]
 names(df_final)[names(df_final)=='position_p'] <- 'position'
 names(df_final)[names(df_final)=='name_p'] <- 'name'
 s_columns <- c('ovr','out','ins','pla','ath','def','reb')
-df_p_final <- df_final[,!(names(df_final)%in%s_columns)]
-df_s_final <- df_final[,c('name',s_columns)]
-head(df_final)
-head(df_p_final)
-head(df_s_final)
+df_p_final <- df_final[,!(names(df_final)%in%s_columns)] # final primary dataset
+df_s_final <- df_final[,c('name',s_columns)] # final secondary dataset
+head(df_final) # final complete (combined primary and secondary) datasets
 summary(df_final)
-summary(df_p_final)
-summary(df_s_final)
-
-```
-
-## Output to files
-```{r}
+# Output final complete, primary, and seconday datasets
 write.csv(df_final,'data/pooled/complete.csv')
 write.csv(df_p_final,'data/pooled/primary.csv')
 write.csv(df_s_final,'data/pooled/secondary.csv')
 ```
 
+# Explore Data
 
-## DATA EXPLORATION
-
+## Summarize Datasets
 ```{r}
-df_final <- read.csv('data/pooled/complete.csv')
-
-df_s_final <- read.csv('data/pooled/secondary.csv')
-
-df_p_final <- read.csv('data/pooled/primary.csv')
-summary(df_p_final)
+# primary dataset
 str(df_p_final)
-summary(df_s_final)
+# secondary dataset
 str(df_s_final)
 ```
 
-## Primary data
-```{r}
+## Complete Dataset Histograms
+```{r eval=F}
 library(purrr)
 library(tidyr)
 library(ggplot2)
-df_p_final[4:ncol(df_p_final)] %>%
+df_final %>%
   keep(is.numeric) %>% 
   gather() %>% 
-  ggplot(aes(value))+ facet_wrap(~ key, scales = "free") + geom_histogram(aes(y=..density..), fill = "grey") + geom_density()
- 
+  ggplot(aes(value)) + 
+      facet_wrap(~ key, scales = "free") + 
+      geom_histogram(aes(y=..density..), fill = "grey") + 
+      geom_density()
+ggsave("figures/hist_complete_vars.png", width=15, height=13)
 ```
 
+## Bar Chart of Player by Team from Complete Dataset
 ```{r}
-ggplot(df_final, aes(x = Tm)) + geom_bar(fill = "grey") + labs(x = "Team", title = "Players per team")
+library(ggplot2)
+ggplot(df_final, aes(x = Tm)) + 
+  geom_bar(fill = "grey") + 
+  labs(x = "Team", title = "Players per team") +
+  theme(axis.text.x=element_text(angle=45,hjust=1,vjust=0.5))
+ggsave("figures/bar_complete_player_per_team.png", width=10, height=7)
 ```
 
-```{r}
+## Sum of Salaries per Team for Complete Dataset
+```{r message=F}
 library(ggplot2)
 library(tidyr)
 library(dplyr)
@@ -143,12 +166,12 @@ df_final %>%
     labs(
         x = "Team",
         y = "Sum of salaries",
-        title = paste(
-            "Sum of salaries per team"
-        )
-    )
+        title = paste("Sum of salaries per team")) + 
+    theme(axis.text.x=element_text(angle=45,hjust=1,vjust=0.5))
+ggsave("figures/bar_complete_sum_salaries_per_team.png", width=10, height=7)
 ```
 
+## Mean Salaries per Team for Complete Dataset
 ```{r}
 library(ggplot2)
 library(tidyr)
@@ -163,118 +186,123 @@ df_final %>%
         x = "Team",
         y = "mean salary",
         title = paste(
-            "mean salary per team"
-        )
-    )
-```
-## Secondary data
-```{r}
-library(ggplot2)
-library(tidyr)
-df_s_final[3:ncol(df_s_final)] %>%
-  keep(is.numeric) %>% 
-  gather() %>% 
-    ggplot(aes(value)) + facet_wrap(~ key, scales = "free") + geom_histogram(aes(y=..density..), fill = "grey") + geom_density()
-
+            "mean salary per team")) + 
+    theme(axis.text.x=element_text(angle=45,hjust=1,vjust=0.5))
+ggsave("figures/bar_complete_mean_salaries_per_team.png", width=10, height=7)
 ```
 
-
-## VARIABLE SELECTION
-
-## PRIMARY DATASET
-
-## Dividing into training and test data
-```{r}
-set.seed(34543)
-sample <- sample(df_p_final$X, size = 0.8 * nrow(df_p_final), replace = FALSE)
-train <- df_p_final[df_p_final$X %in% sample, ]
-test <- df_p_final[!df_p_final$X %in% sample, ]
-# Always check key assumptions like below!!!
-stopifnot(nrow(train) + nrow(test) == nrow(df_p_final))
-nrow(train)
-nrow(test)
-nrow(df_p_final)
+## Correlation Matrix for Complete Dataset
+```{r message=F}
+library(GGally)
+ggcorr(df_final)
+ggsave("figures/complete_correlation_matrix.png", width=10, height=10)
 ```
 
-
-## Correlation plot for primary dataset
+## Top Salary Correlations from Complete Dataset
 ```{r}
-par(mar=c(1,1,1,1))
-library(corrplot)
-d <- train[which(sapply(train, is.numeric))]
-corr_matrix <- cor(d,method = "pearson")
-cplot <- corrplot(corr_matrix)
-```
-
-## correlation between all variables and salary
-```{r}
-correlation_salary <- sort(corr_matrix[2:nrow(corr_matrix),'salary'],decreasing = TRUE)
+corr_matrix <- cor(Filter(is.numeric,df_final),method = "pearson")
+correlation_salary <- sort(corr_matrix[,'salary'],decreasing = TRUE)
 correlation_salary
-str(correlation_salary)
 ```
 
-## Using Automated F-test-based backward selection
+# VARIABLE SELECTION
 
+## Helper Functions
+```{r}
+get_salary_formula <- function(x_vars){
+  return(as.formula(sprintf('salary ~ `%s`',paste(x_vars,collapse='` + `'))))}
+```
+
+## Primary Dataset Variable Selection Using Automated F-Test-Based Backward Selection
 ```{r}
 library(rms)
-Varselection <- ols(salary ~ WS + PTS+FG+FTA+FGA+OWS+`X2P`+`X2PA`+VORP+MP+DWS+GS+TOV+DRB+PER+TRB+BPM+OBPM+AST+STL+`WS.48`+USG.+PF+BLK+G+AST.+TS.+FTr+eFG.+FG.+ Age+DBPM+`X2P.`+DRB.+FT.+TRB.+`X3P.`+BLK.+STL.+ORB.+TOV.+`X3PAr`, data = df_p_final)
-fastbw(Varselection, rule = "p", sls = 0.1)
+p_x_vars <- names(df_p_final)[!(names(df_p_final)%in%c('salary','name','2P','2PA','PTS','TRB'))]
+# 2P, 2PA, PTS, and TRB were causing singularity in predictor matrix, so they were dropped
+p_formula <- get_salary_formula(p_x_vars)
+p_formula
+p_selection_model <- ols(p_formula, data = df_p_final)
+p_selection_model
+p_seleced <- fastbw(p_selection_model, rule = "p", sls = 0.1)
+p_seleced
 ```
 
-## Checking for multicollinearity among variables.
+## Checking for Multicollinearity Among Optimal Subset of Primary Variables.
 ```{r}
-variables <- lm(salary ~ FG + OWS + MP + DWS + STL + G + Age , data = df_p_final)
-summary(variables)
-vif(variables) # All variables have low VIF values. So no multicollinearity.
+p_subset_formula <- get_salary_formula(p_seleced[['names.kept']])
+p_subset_formula
+p_subset_lm <- lm(p_subset_formula , data=df_p_final)
+summary(p_subset_lm)
+vif(p_subset_lm) # All variables have low VIF values. So no multicollinearity.
+p_vars_final <- p_seleced[['names.kept']]
 ```
 
-
-
-## COMPLATE DATASET
-
-```{r}
-set.seed(34543)
-sample <- sample(df_final$X, size = 0.8 * nrow(df_final), replace = FALSE)
-train <- df_final[df_final$X %in% sample, ]
-test <- df_final[!df_final$X %in% sample, ]
-# Always check key assumptions like below!!!
-stopifnot(nrow(train) + nrow(test) == nrow(df_final))
-nrow(train)
-nrow(test)
-nrow(df_final)
-```
-
-
-## Correlation plot for primary dataset
-```{r}
-par(mar=c(1,1,1,1))
-library(corrplot)
-d <- train[which(sapply(train, is.numeric))]
-corr_matrix <- cor(d,method = "pearson")
-cplot <- corrplot(corr_matrix)
-```
-
-## correlation between all variables and salary
-```{r}
-correlation_salary <- sort(corr_matrix[2:nrow(corr_matrix),'salary'],decreasing = TRUE)
-correlation_salary
-str(correlation_salary)
-```
-
-## Using Automated F-test-based backward selection
-
+## Complete Dataset Variable Selection Using Automated F-Test-Based Backward Selection
 ```{r}
 library(rms)
-Varselection <- ols(salary ~ WS + PTS+FG+FTA+FGA+OWS+`X2P`+`X2PA`+VORP+MP+DWS+GS+TOV+DRB+PER+TRB+BPM+OBPM+AST+STL+`WS.48`+USG.+PF+BLK+G+AST.+TS.+FTr+eFG.+FG.+ Age+DBPM+`X2P.`+DRB.+FT.+TRB.+`X3P.`+BLK.+STL.+ORB.+TOV.+`X3PAr`+ovr+def+ins+ath+out+pla+reb, data = df_final)
-fastbw(Varselection, rule = "p", sls = 0.1)
+c_x_vars <- names(df_final)[!(names(df_final)%in%c('salary','name','2P','2PA','PTS','TRB'))]
+# 2P, 2PA, PTS, and TRB were causing singularity in predictor matrix, so they were dropped
+c_formula <- get_salary_formula(c_x_vars)
+c_formula
+c_selection_model <- ols(c_formula, data = df_final)
+c_selection_model
+c_seleced <- fastbw(c_selection_model, rule = "p", sls = 0.1)
+c_seleced
 ```
 
-## Checking for multicollinearity among variables.
-
+## Checking for Multicollinearity Among Optimal Subset of Complete Variables.
 ```{r}
-variables <- lm(salary ~  OWS + MP + DWS + STL +USG.+ G + Age + ovr  , data = df_final)
-summary(variables)
-vif(variables) # All variables have low VIF values. So no multicollinearity.
+c_subset_formula <- get_salary_formula(c_seleced[['names.kept']])
+c_subset_formula
+c_subset_lm <- lm(c_subset_formula , data=df_final)
+summary(c_subset_lm)
+vif(c_subset_lm) # All variables have low VIF values. So no multicollinearity.
+c_vars_final <- c_seleced[['names.kept']]
+```
+
+## Subset Primary and Complete Dataframes to Include Only Name, Salary, and Selected Variables
+```{r}
+p_vars_subset <- c('name','salary',p_vars_final)
+df_p_subset_final <- df_p_final[,p_vars_subset]
+c_vars_subset <- c('name','salary',c_vars_final)
+df_c_subset_final <- df_final[,c_vars_subset]
+```
+
+# Split Train-Test
+
+```{r message=F}
+library(caret)
+set.seed(7)
+```
+
+## Primary Dataset
+```{r}
+
+train_rows <- createDataPartition(y=df_p_subset_final[,'salary'], list=FALSE, p=.8)
+p_train_df <- df_p_subset_final[train_rows,]
+p_test_df <- df_p_subset_final[-train_rows,]
+stopifnot(nrow(p_train_df) + nrow(p_test_df) == nrow(df_p_subset_final))
+nrow(p_train_df)
+nrow(p_test_df)
+names(p_train_df)
+head(p_train_df)
+write.csv(p_train_df,'data/train_test/primary/train.csv')
+write.csv(p_test_df,'data/train_test/primary/test.csv')
+```
+
+## Complete Dataset
+```{r}
+library(caret)
+set.seed(7)
+train_rows <- createDataPartition(y=df_c_subset_final[,'salary'], list=FALSE, p=.8)
+c_train_df <- df_c_subset_final[train_rows,]
+c_test_df <- df_c_subset_final[-train_rows,]
+stopifnot(nrow(c_train_df) + nrow(c_test_df) == nrow(df_c_subset_final))
+nrow(c_train_df)
+nrow(c_test_df)
+names(c_train_df)
+head(c_train_df)
+write.csv(c_train_df,'data/train_test/complete/train.csv')
+write.csv(c_test_df,'data/train_test/complete/test.csv')
 ```
 
 
