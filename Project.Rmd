@@ -191,18 +191,95 @@ df_final %>%
 ggsave("figures/bar_complete_mean_salaries_per_team.png", width=10, height=7)
 ```
 
-## Correlation Matrix for Complete Dataset
-```{r message=F}
-library(GGally)
-ggcorr(df_final)
-ggsave("figures/complete_correlation_matrix.png", width=10, height=10)
+## Players in each position
+```{r}
+library(ggplot2)
+ggplot(df_final, aes(x = Pos)) + 
+  geom_bar(fill = "orange") + 
+  labs(x = "Position", title = "No of Player for each position") +
+  theme_classic()
+ggsave("figures/bar_complete_player_Position.png", width=10, height=7)
 ```
 
-## Top Salary Correlations from Complete Dataset
+## Mean salaries for each position
 ```{r}
-corr_matrix <- cor(Filter(is.numeric,df_final),method = "pearson")
-correlation_salary <- sort(corr_matrix[,'salary'],decreasing = TRUE)
-correlation_salary
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+df_final %>%
+  group_by(Pos) %>%
+  summarise(mean_salary = mean(salary)) %>%
+  ggplot(aes(x = Pos, y = mean_salary, fill = Pos)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    labs(
+        x = "Pos",
+        y = "mean salary",
+        title = paste(
+            "mean salary for Position")) 
+ggsave("figures/bar_complete_mean_salaries_for_Position.png", width=10, height=7)
+```
+
+## Correlation Matrix for complete dataset
+```{r}
+corr_matrix_c <- cor(Filter(is.numeric,df_final[2:ncol(df_final)]),method = "pearson")
+correlation_salary_c <- sort(corr_matrix_c[,'salary'],decreasing = TRUE)
+correlation_salary_c
+```
+
+## Correlation Plot for complete dataset
+```{r}
+library(corrplot)
+corrplot(corr_matrix_c,type = "upper")
+```
+
+## Correlation plot for Primary dataset
+```{r}
+corr_matrix_p <- cor(Filter(is.numeric,df_p_final[2:ncol(df_p_final)]),method = "pearson")
+correlation_salary_p <- sort(corr_matrix_p[,'salary'],decreasing = TRUE)
+correlation_salary_p
+```
+
+```{r}
+library(corrplot)
+corrplot(corr_matrix_p,type = "upper")
+```
+
+## Save correlation plots.
+```{r}
+# complete dataset
+png(file = "figures/Correlation_plot_c.png")
+corrplot(corr_matrix_c,type = "upper")
+# primary dataset
+png(file = "figures/Correlation_plot_p.png")
+corrplot(corr_matrix_p,type = "upper")
+dev.off()
+```
+
+## Detecting outliers
+```{r}
+plot = function(variable)
+{
+  print(variable)
+  ggplot(df_final,aes(x = df_final[,variable], y = salary)) + geom_point() + theme_classic() + labs(x=variable)
+}
+
+
+library(gridExtra)
+p = list()
+p <- NULL
+val <- 0
+d <- df_final[,4:ncol(df_final)]
+for(j in 1:5)
+{
+  for(i in 1:11) {
+  name = names(d[i+val])
+  p[[i]] = plot(as.character(name))
+  }
+  val = i+val
+do.call(grid.arrange,p)
+p <- NULL
+}
 ```
 
 # VARIABLE SELECTION
@@ -216,7 +293,7 @@ get_salary_formula <- function(x_vars){
 ## Primary Dataset Variable Selection Using Automated F-Test-Based Backward Selection
 ```{r}
 library(rms)
-p_x_vars <- names(df_p_final)[!(names(df_p_final)%in%c('salary','name','2P','2PA','PTS','TRB'))]
+p_x_vars <- names(df_p_final)[!(names(df_p_final))%in%c('salary','name','2P','TRB','2PA','PTS')]
 # 2P, 2PA, PTS, and TRB were causing singularity in predictor matrix, so they were dropped
 p_formula <- get_salary_formula(p_x_vars)
 p_formula
@@ -224,6 +301,7 @@ p_selection_model <- ols(p_formula, data = df_p_final)
 p_selection_model
 p_seleced <- fastbw(p_selection_model, rule = "p", sls = 0.1)
 p_seleced
+
 ```
 
 ## Checking for Multicollinearity Among Optimal Subset of Primary Variables.
