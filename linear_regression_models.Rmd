@@ -1,0 +1,113 @@
+---
+title: "Linear Regression Models"
+author: "Aleksei Sorokin, asorokin@hawk.iit.edu, A20394300"
+date: "3/31/2020"
+output: pdf_document
+---
+
+## Load Primary Dataset
+```{r}
+df_p.all <- read.csv('data/pooled/primary.csv')
+df_p.all$year <- as.factor(df_p.all$year)
+str(df_p.all)
+head(df_p.all)
+```
+
+## Load Complete (Primary + Secondary) Dataset
+```{r}
+df_c.all <- read.csv('data/pooled/complete.csv')
+df_c.all$year <- as.factor(df_c.all$year)
+str(df_c.all)
+head(df_c.all)
+```
+
+## Split Primary & Complete Datasets into Train Test
+```{r message=F}
+library(caret)
+set.seed(7)
+# primary dataset
+train_rows.p <- createDataPartition(y=df_p.all[,'salary'], list=FALSE, p=.8)
+df_p.train <- df_p.all[train_rows.p,]
+df_p.test <- df_p.all[-train_rows.p,]
+nrow(df_p.all)
+nrow(df_p.train)
+nrow(df_p.test)
+# complete dataset
+train_rows.c <- createDataPartition(y=df_c.all[,'salary'], list=FALSE, p=.8)
+df_c.train <- df_c.all[train_rows.c,]
+df_c.test <- df_c.all[-train_rows.c,]
+nrow(df_c.all)
+nrow(df_c.train)
+nrow(df_c.test)
+```
+
+### Modeling Helper Functions
+```{r}
+get_salary_formula <- function(x_vars){
+  return()}
+r_squared <- function(y,yHat){1-sum((y-yHat)^2)/sum((y-mean(y))^2)}
+mse <- function(y,yHat){mean((y-yHat)^2)}
+model_results <- function(model,dataset,y,yHat){
+  r2_test <- r_squared(y,yHat)
+  mse_test <- mse(y,yHat)
+  cat(sprintf('Model: %-25s Dataset: %-10s R^2 Test: %-10.3f MSE: %-10.3e\n',model,dataset,r2_test,mse_test))}
+```
+
+## Simple Linear Regression Model
+```{r}
+slr_modeling <- function(dataset,df_train,df_test){
+  model <- 'simple linear regression'
+  x_vars <- names(df_train)[!(names(df_train)%in%c('name','salary','X2P','X2PA','TRB','PTS'))]
+  f <- as.formula(sprintf('salary ~ `%s`',paste(x_vars,collapse='` + `')))
+  slr_model <- lm(f,data=df_train)
+  yhat <- predict(slr_model,df_test)
+  model_results(model,dataset,df_test[['salary']],yhat)}
+```
+
+## Lasso, Ridge, and Elastic Net Models with 10-fold Cross validation for alpha = seq(0,1,by=.1)
+```{r message=F}
+library(glmnet)
+lre_modeling <- function(dataset,df_train,df_test){
+  # get only numeric variables
+  numeric_vars <- names(Filter(is.numeric,df_train))
+  numeric_x_vars <- numeric_vars[!(numeric_vars%in%c('salary'))]
+  x_train <- data.matrix(df_train[,numeric_x_vars])
+  y_train <- df_train[['salary']]
+  x_test <- data.matrix(df_test[,numeric_x_vars])
+  y_test <- df_test[['salary']]
+  # fit models
+  for (i in seq(0,1,by=.1)){
+    model_name <- paste('fit_alpha_',i,sep='')
+    assign(model_name, cv.glmnet(x_train, y_train, type.measure="mse",alpha=i,family="gaussian"))
+    model <- get(model_name)
+    yhat <- predict(model,s=model$lambda.min,newx=x_test)
+    model_results(model_name,dataset,y_test,yhat)}
+  # plot
+  path = sprintf("figures/lasso_ridge_elasticnet_models_%s.png",dataset)
+  png(file=path,width=5,height=15,units='in',res=1200)
+  par(mfrow=c(6,1))
+  #    lasso
+  lasso_model <- glmnet(x_train, y_train, family="gaussian", alpha=1)
+  lasso_model_cv <- get('fit_alpha_1')
+  plot(lasso_model,main="LASSO")
+  plot(lasso_model_cv,xvar="lambda")
+  #    ridge
+  ridge_model <- glmnet(x_train, y_train, family="gaussian", alpha=0)
+  ridge_model_cv <- get('fit_alpha_0')
+  plot(ridge_model,main="Ridge")
+  plot(ridge_model_cv,xvar="lambda")
+  #    elastic net
+  enet_model <- glmnet(x_train, y_train, family="gaussian", alpha=.5)
+  enet_model_cv <- get('fit_alpha_0.5')
+  plot(enet_model,main="Elastic Net")
+  plot(enet_model_cv,xvar="lambda")
+  dev.off()}
+```
+
+## Create Models
+```{r message=F}
+slr_modeling('primary',df_p.train,df_p.test)
+lre_modeling('primary',df_p.train,df_p.test)
+slr_modeling('complete',df_c.train,df_c.test)
+lre_modeling('complete',df_c.train,df_c.test)
+```

@@ -223,9 +223,9 @@ df_p_final <- df_final[,!(names(df_final)%in%s_columns)] # final primary dataset
 df_s_final <- df_final[,c('name',s_columns)] # final secondary dataset
 summary(df_final)
 # Output final complete, primary, and seconday datasets
-write.csv(df_final,'data/pooled/complete.csv')
-write.csv(df_p_final,'data/pooled/primary.csv')
-write.csv(df_s_final,'data/pooled/secondary.csv')
+write.csv(df_final,'data/pooled/complete.csv',row.names=F)
+write.csv(df_p_final,'data/pooled/primary.csv',row.names=F)
+write.csv(df_s_final,'data/pooled/secondary.csv',row.names=F)
 # preview datasets
 head(df_p_final)
 head(df_s_final)
