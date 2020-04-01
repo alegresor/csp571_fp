@@ -408,7 +408,7 @@ get_salary_formula <- function(x_vars){
 ## Primary Dataset Variable Selection Using Automated F-Test-Based Backward Selection
 ```{r}
 library(rms)
-p_x_vars <- names(df_p_final)[!(names(df_p_final))%in%c('salary','name','2P','TRB','2PA','PTS')]
+p_x_vars <- names(df_p_final)[!(names(df_p_final))%in%c('salary','name','2P','2PA','PTS','TRB')]
 # 2P, 2PA, PTS, and TRB were causing singularity in predictor matrix, so they were dropped
 p_formula <- get_salary_formula(p_x_vars)
 p_formula
@@ -416,7 +416,6 @@ p_selection_model <- ols(p_formula, data = df_p_final)
 p_selection_model
 p_seleced <- fastbw(p_selection_model, rule = "p", sls = 0.1)
 p_seleced
-
 ```
 
 ## Checking for Multicollinearity Among Optimal Subset of Primary Variables.
@@ -425,12 +424,12 @@ p_subset_formula <- get_salary_formula(p_seleced[['names.kept']])
 p_subset_formula
 p_subset_lm <- lm(p_subset_formula , data=df_p_final)
 summary(p_subset_lm)
-vif(p_subset_lm) # All variables have low VIF values. So no multicollinearity.
+sort(vif(p_subset_lm),decreasing=T) # All variables have low VIF values. So no multicollinearity.
 p_vars_final <- p_seleced[['names.kept']]
 ```
 
 ## Complete Dataset Variable Selection Using Automated F-Test-Based Backward Selection
-```{r}
+```{r message=F}
 library(rms)
 c_x_vars <- names(df_final)[!(names(df_final)%in%c('salary','name','2P','2PA','PTS','TRB'))]
 # 2P, 2PA, PTS, and TRB were causing singularity in predictor matrix, so they were dropped
@@ -448,7 +447,7 @@ c_subset_formula <- get_salary_formula(c_seleced[['names.kept']])
 c_subset_formula
 c_subset_lm <- lm(c_subset_formula , data=df_final)
 summary(c_subset_lm)
-vif(c_subset_lm) # All variables have low VIF values. So no multicollinearity.
+sort(vif(c_subset_lm),decreasing=T) # All variables have low VIF values. So no multicollinearity.
 c_vars_final <- c_seleced[['names.kept']]
 ```
 
@@ -469,7 +468,6 @@ set.seed(7)
 
 ## Primary Dataset
 ```{r}
-
 train_rows <- createDataPartition(y=df_p_subset_final[,'salary'], list=FALSE, p=.8)
 p_train_df <- df_p_subset_final[train_rows,]
 p_test_df <- df_p_subset_final[-train_rows,]
