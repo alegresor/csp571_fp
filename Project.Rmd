@@ -50,6 +50,47 @@ head(df_primary)
 summary(df_primary)
 ```
 
+### Numeric / Factor Variables
+```{r}
+df_primary$Tm <- as.factor(df_primary$Tm) # TOT means they played for multiple teams
+#    will be useful later when multiple records for a single player in a single year
+df_primary$year <- as.factor(df_primary$year) # make year a factor variable
+df_primary[df_primary$Pos=='PF-C',] # only 2 Power-Forwards / Centers
+# each player should only have 1 position
+# both Channing Frye and Joffrey Lauvergne are classified as Forwards (PF)
+# https://www.espn.com/nba/player/stats/_/id/2754/channing-frye
+# https://www.espn.com/nba/player/stats/_/id/2959753/joffrey-lauvergne
+df_primary$Pos <- gsub('PF-C','PF',df_primary$Pos) 
+df_primary$Pos <- as.factor(df_primary$Pos) # make Pos a factor variable
+table(df_primary$Pos)
+str(df_primary)
+```
+
+### Histogram Barcharts for Numeric Variables
+```{r}
+df_p_numeric <- Filter(is.numeric,df_primary) # numeric variables
+for (col in names(df_p_numeric)){
+  data <- df_p_numeric[[col]]
+  layout(mat = matrix(c(1,2),2,1, byrow=TRUE), height = c(1,8))
+  par(mar=c(0, 3.1, 1.1, 2.1))
+  boxplot(data , horizontal=TRUE , xaxt="n", frame=F, main=sprintf('Histogram of %s',col))
+  par(mar=c(4, 3.1, 1.1, 2.1))
+  hist(data,xlab=col,main='')
+  # print top players in this category
+  cat(sprintf('Top 10 Players by %s\n',col))
+  df_top <- df_primary[order(df_primary[[col]],decreasing=T),] 
+  print(df_top[1:10,])}
+```
+
+### Histograms for Categorical Variables
+```{r}
+categorical_vars <- c('year','Pos','Tm')
+for (col in categorical_vars){
+  data <- df_primary[[col]]
+  barplot(table(data),main=sprintf('Histogram of %s',col),las=2)
+  print('\n')}
+```
+
 ## Pool Together and Clean NBA 2K Data (Secondary Dataset)
 ```{r}
 secondary_attriutes <- c('name_s','position_s','ovr','out','ins','pla','ath','def','reb')
@@ -70,17 +111,87 @@ head(df_secondary)
 summary(df_secondary)
 ```
 
-## Merge Primary and Secondary Datasets
+### Numeric / Factor Variables
 ```{r}
+df_secondary$name_s <- as.character(df_secondary$name_s)
+df_secondary$year <- as.factor(df_secondary$year) # make year a factor variable
+df_secondary$position_s <- factor(df_secondary$position_s) # make position a factor variable
+str(df_secondary)
+```
+
+### Histogram Barcharts for Numeric Variables
+```{r}
+df_s_numeric <- Filter(is.numeric,df_secondary) # numeric variables
+for (col in names(df_s_numeric)){
+  data <- df_s_numeric[[col]]
+  layout(mat = matrix(c(1,2),2,1, byrow=TRUE), height = c(1,8))
+  par(mar=c(0, 3.1, 1.1, 2.1))
+  boxplot(data , horizontal=TRUE , xaxt="n", frame=F, main=sprintf('Histogram of %s',col))
+  par(mar=c(4, 3.1, 1.1, 2.1))
+  hist(data,xlab=col,main='')
+  # print top players in this category
+  cat(sprintf('Top 10 Players by %s\n',col))
+  df_top <- df_secondary[order(df_secondary[[col]],decreasing=T),] 
+  print(df_top[1:10,])}
+```
+
+### Histograms for Categorical Variables
+```{r}
+categorical_vars <- c('year','position_s')
+for (col in categorical_vars){
+  data <- df_secondary[[col]]
+  barplot(table(data),main=sprintf('Histogram of %s',col))
+  print('\n')}
+```
+
+## Merge Primary and Secondary Datasets
+
+### Name Cleaning
+```{r message=FALSE}
+library(stringdist)
+library(reshape)
 library(stringr)
+sub_n_diff_score <- function(ppl,n){
+    str_dist <- melt(stringdistmatrix(a=ppl, b=ppl, method = 'lv', useNames = 'strings'))
+    str_dist_1_to_n <- str_dist[str_dist$value<=n & str_dist$value>0,]
+    return (str_dist_1_to_n[order(str_dist_1_to_n$value),])}
 clean_names <- function(names){
   names <- tolower(names)
   names <- str_squish(names)
   names <- gsub('\\.','',names)
   names <- gsub('-',' ',names)
   return (names)}
-df_primary$name <- clean_names(df_primary[['name_p']])
-df_secondary$name <- clean_names(df_secondary[['name_s']])
+df_primary$name <- clean_names(df_primary[['name_p']]) # clean primary dataset names
+df_secondary$name <- clean_names(df_secondary[['name_s']])# clean secondary dataset
+df_primary$name <- iconv(df_primary$name,to='ASCII//TRANSLIT') # convert to ascii
+df_secondary$name <- iconv(df_secondary$name,to='ASCII//TRANSLIT') # convert to asii
+df_secondary <- df_secondary[!grepl("\\d",df_secondary$name),]
+#    remove players with numbers in name as this signifies a legendary player 
+df_secondary <- df_secondary[!grepl("dynamic",df_secondary$name),]
+#    remove dynamic versions of players
+replace_names <- list(
+  `isiah thomas` = 'isaiah thomas',
+  `jonathan simmons` = 'jonathon simmons',
+  `lance stepheson` = 'lance stephenson',
+  `luke babbitt` = 'luke babbit',
+  `luke babbit` = 'luke babbitt',
+  `patrick beverly` = 'patrick beverley',
+  `willis reed` = 'willie reed',
+  `kiki vanderweghe` = 'kiki vandeweghe',
+  `mychael thompson` = 'mychal thompson',
+  `drayamond green` = 'draymond green',
+  `louis amundson` = 'lou amundson',
+  `louis williams` = 'lou williams')
+for (n in names(replace_names)){
+  df_primary$name <- gsub(n,replace_names[[n]],df_primary$name)
+  df_secondary$name <- gsub(n,replace_names[[n]],df_secondary$name)
+}
+all_names <- unique(c(df_primary$name,df_secondary$name))
+sub_n_diff_score(unique(all_names),2)
+```
+
+### Joining Datasets
+```{r}
 # if multiple versions of a player, take the one with the max overall
 df_secondary_max <- aggregate(df_secondary['ovr'],df_secondary[c('name','year')],max)
 df_secondary_max <- merge(df_secondary_max,df_secondary,by=c('name','year','ovr'),all=F)
@@ -97,24 +208,28 @@ df_full <- merge(df_full_p,df_full_s,by=c('name','year'),all=F)
 df_full <- df_full[order(df_full$name,df_full$year),]
 df_full <- unique(df_full)
 head(df_full[,1:5])
-
+# joined datasets checks
+max(table(df_full$name)) # should be 2 (2016,2017)
+nrow(df_full)
 ```
 
-## Clean Up Merged Data and 
+### Clean Up Joined Data 
 ```{r}
-drop_cols <- c('name','name_s','position_s')
+drop_cols <- c('name_p','name_s','position_s')
 df_final <- df_full[,!(names(df_full)%in%drop_cols)]
 names(df_final)[names(df_final)=='position_p'] <- 'position'
-names(df_final)[names(df_final)=='name_p'] <- 'name'
 s_columns <- c('ovr','out','ins','pla','ath','def','reb')
 df_p_final <- df_final[,!(names(df_final)%in%s_columns)] # final primary dataset
 df_s_final <- df_final[,c('name',s_columns)] # final secondary dataset
-head(df_final) # final complete (combined primary and secondary) datasets
 summary(df_final)
 # Output final complete, primary, and seconday datasets
 write.csv(df_final,'data/pooled/complete.csv')
 write.csv(df_p_final,'data/pooled/primary.csv')
 write.csv(df_s_final,'data/pooled/secondary.csv')
+# preview datasets
+head(df_p_final)
+head(df_s_final)
+head(df_final)
 ```
 
 # Explore Data
@@ -256,7 +371,7 @@ corrplot(corr_matrix_p,type = "upper")
 dev.off()
 ```
 
-## Detecting outliers
+## Detecting Outliers
 ```{r}
 plot = function(variable)
 {
