@@ -1,9 +1,8 @@
 ---
-title: "Linear Regression Models"
-author: "Aleksei Sorokin, asorokin@hawk.iit.edu, A20394300"
-date: "3/31/2020"
+title: "Models and Deployment"
+author: "Basketball Salaries Team"
 output: pdf_document
-geometry: margin=1cm
+geometry: margin=.5cm
 ---
 
 ## Load Primary Dataset
@@ -119,16 +118,16 @@ y_train.c <- df_c.train[['salary']]
 x_test.c <- data.matrix(df_c.test[,numeric_x_vars.c])
 y_test.c <- df_c.test[['salary']]
 # train/test Simple Linear Regression models
-ignore <- lre_modeling('primary',x_train.p,y_train.p,x_test.p,y_test.p,seq(0,1,by=.1),TRUE)
-ignore <- lre_modeling('complete',x_train.c,y_train.c,x_test.c,y_test.c,seq(0,1,by=.1),TRUE)
+mkplots <- FALSE # change to TRUE if you want to generate plots
+ignore <- lre_modeling('primary',x_train.p,y_train.p,x_test.p,y_test.p,seq(0,1,by=.1),mkplots)
+ignore <- lre_modeling('complete',x_train.c,y_train.c,x_test.c,y_test.c,seq(0,1,by=.1),mkplots)
 ```
 
 ## Save Optimal Model to File
 Optimal model with largest R^2 Test and lowest MSE is elasticnet model with alpha = .1
 ```{r}
 optimal_model <- lre_modeling('primary',x_train.p,y_train.p,x_test.p,y_test.p,c(0.1),FALSE)
-saveRDS(optimal_model,file='optimal_model.rds')
-df_p.all[df_p.all['name']=='lebron james',]
+saveRDS(optimal_model,file='data/optimal_model.rds')
 ```
 
 ## Example Deployment of Optimal Model
@@ -138,7 +137,7 @@ r <- plumb("deploy_optimal_model.R")
 r$run(port=8000)
 # Single Player Prediction Command
 ```{r eval=F}
-# 2016 LeBron Jame Example
+# 2016 LeBron James Example
 cmd <- paste(
           "curl -X POST 'http://localhost:8000/predict_salary?",
          "mat=0&Age=31&G=76&GS=76&MP=2709&PER=27.5&TS.=.588&X3PAr=0.199&FTr=0.347&ORB.=4.7&DRB.=18.8&",

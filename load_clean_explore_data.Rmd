@@ -1,11 +1,9 @@
 ---
-title: "CSP 571 Course Project"
+title: "Load, Clean, and Explore Data"
 author: "Basketball Salaries Team"
 output: pdf_document
-geometry: margin=1cm
+geometry: margin=.5cm
 ---
-
-# Load, Clean, and Link Data
 
 ## Load NBA 2K Data
 Note: Primary dataset is directly downloaded from Kaggle. This video-game rankings dataset is scraped from http://mtdb.com/20
