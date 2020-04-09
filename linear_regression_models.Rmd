@@ -3,6 +3,7 @@ title: "Linear Regression Models"
 author: "Aleksei Sorokin, asorokin@hawk.iit.edu, A20394300"
 date: "3/31/2020"
 output: pdf_document
+geometry: margin=1cm
 ---
 
 ## Load Primary Dataset
@@ -43,8 +44,6 @@ nrow(df_c.test)
 
 ### Modeling Helper Functions
 ```{r}
-get_salary_formula <- function(x_vars){
-  return()}
 r_squared <- function(y,yHat){1-sum((y-yHat)^2)/sum((y-mean(y))^2)}
 mse <- function(y,yHat){mean((y-yHat)^2)}
 model_results <- function(model,dataset,y,yHat){
@@ -53,61 +52,99 @@ model_results <- function(model,dataset,y,yHat){
   cat(sprintf('Model: %-25s Dataset: %-10s R^2 Test: %-10.3f MSE: %-10.3e\n',model,dataset,r2_test,mse_test))}
 ```
 
-## Simple Linear Regression Model
+## Simple Linear Regression Models
 ```{r}
+# modeling function
 slr_modeling <- function(dataset,df_train,df_test){
   model <- 'simple linear regression'
   x_vars <- names(df_train)[!(names(df_train)%in%c('name','salary','X2P','X2PA','TRB','PTS'))]
   f <- as.formula(sprintf('salary ~ `%s`',paste(x_vars,collapse='` + `')))
   slr_model <- lm(f,data=df_train)
   yhat <- predict(slr_model,df_test)
-  model_results(model,dataset,df_test[['salary']],yhat)}
+  model_results(model,dataset,df_test[['salary']],yhat)
+  return(slr_model)}
+# train/test Simple Linear Regression models
+ignore <- slr_modeling('primary',df_p.train,df_p.test)
+ignore <- slr_modeling('complete',df_c.train,df_c.test)
 ```
 
 ## Lasso, Ridge, and Elastic Net Models with 10-fold Cross validation for alpha = seq(0,1,by=.1)
 ```{r message=F}
 library(glmnet)
-lre_modeling <- function(dataset,df_train,df_test){
-  # get only numeric variables
-  numeric_vars <- names(Filter(is.numeric,df_train))
-  numeric_x_vars <- numeric_vars[!(numeric_vars%in%c('salary'))]
-  x_train <- data.matrix(df_train[,numeric_x_vars])
-  y_train <- df_train[['salary']]
-  x_test <- data.matrix(df_test[,numeric_x_vars])
-  y_test <- df_test[['salary']]
+# modeling function
+lre_modeling <- function(dataset,x_train,y_train,x_test,y_test,alphas,mkplot){
+  set.seed(7) # seed for reproducibility
   # fit models
-  for (i in seq(0,1,by=.1)){
+  for (i in alphas){
     model_name <- paste('fit_alpha_',i,sep='')
     assign(model_name, cv.glmnet(x_train, y_train, type.measure="mse",alpha=i,family="gaussian"))
     model <- get(model_name)
     yhat <- predict(model,s=model$lambda.min,newx=x_test)
     model_results(model_name,dataset,y_test,yhat)}
   # plot
-  path = sprintf("figures/lasso_ridge_elasticnet_models_%s.png",dataset)
-  png(file=path,width=5,height=15,units='in',res=1200)
-  par(mfrow=c(6,1))
-  #    lasso
-  lasso_model <- glmnet(x_train, y_train, family="gaussian", alpha=1)
-  lasso_model_cv <- get('fit_alpha_1')
-  plot(lasso_model,main="LASSO")
-  plot(lasso_model_cv,xvar="lambda")
-  #    ridge
-  ridge_model <- glmnet(x_train, y_train, family="gaussian", alpha=0)
-  ridge_model_cv <- get('fit_alpha_0')
-  plot(ridge_model,main="Ridge")
-  plot(ridge_model_cv,xvar="lambda")
-  #    elastic net
-  enet_model <- glmnet(x_train, y_train, family="gaussian", alpha=.5)
-  enet_model_cv <- get('fit_alpha_0.5')
-  plot(enet_model,main="Elastic Net")
-  plot(enet_model_cv,xvar="lambda")
-  dev.off()}
+  if(mkplot){
+    path = sprintf("figures/lasso_ridge_elasticnet_models_%s.png",dataset)
+    png(file=path,width=5,height=15,units='in',res=1200)
+    par(mfrow=c(6,1))
+    #    lasso
+    lasso_model <- glmnet(x_train, y_train, family="gaussian", alpha=1)
+    lasso_model_cv <- get('fit_alpha_1')
+    plot(lasso_model,main="LASSO")
+    plot(lasso_model_cv,xvar="lambda")
+    #    ridge
+    ridge_model <- glmnet(x_train, y_train, family="gaussian", alpha=0)
+    ridge_model_cv <- get('fit_alpha_0')
+    plot(ridge_model,main="Ridge")
+    plot(ridge_model_cv,xvar="lambda")
+    #    elastic net
+    enet_model <- glmnet(x_train, y_train, family="gaussian", alpha=.5)
+    enet_model_cv <- get('fit_alpha_0.5')
+    plot(enet_model,main="Elastic Net")
+    plot(enet_model_cv,xvar="lambda")
+    dev.off()}
+  return(model)} # return final model created
+# extract train/test datasets of only numeric variables as required by glmnet models
+#    primary dataset
+numeric_vars.p <- names(Filter(is.numeric,df_p.train))
+numeric_x_vars.p <- numeric_vars.p[!(numeric_vars.p%in%c('salary'))]
+x_train.p <- data.matrix(df_p.train[,numeric_x_vars.p])
+y_train.p <- df_p.train[['salary']]
+x_test.p <- data.matrix(df_p.test[,numeric_x_vars.p])
+y_test.p <- df_p.test[['salary']]
+#    complete dataset
+numeric_vars.c <- names(Filter(is.numeric,df_c.train))
+numeric_x_vars.c <- numeric_vars.c[!(numeric_vars.c%in%c('salary'))]
+x_train.c <- data.matrix(df_c.train[,numeric_x_vars.c])
+y_train.c <- df_c.train[['salary']]
+x_test.c <- data.matrix(df_c.test[,numeric_x_vars.c])
+y_test.c <- df_c.test[['salary']]
+# train/test Simple Linear Regression models
+ignore <- lre_modeling('primary',x_train.p,y_train.p,x_test.p,y_test.p,seq(0,1,by=.1),TRUE)
+ignore <- lre_modeling('complete',x_train.c,y_train.c,x_test.c,y_test.c,seq(0,1,by=.1),TRUE)
 ```
 
-## Create Models
-```{r message=F}
-slr_modeling('primary',df_p.train,df_p.test)
-lre_modeling('primary',df_p.train,df_p.test)
-slr_modeling('complete',df_c.train,df_c.test)
-lre_modeling('complete',df_c.train,df_c.test)
+## Save Optimal Model to File
+Optimal model with largest R^2 Test and lowest MSE is elasticnet model with alpha = .1
+```{r}
+optimal_model <- lre_modeling('primary',x_train.p,y_train.p,x_test.p,y_test.p,c(0.1),FALSE)
+saveRDS(optimal_model,file='optimal_model.rds')
+df_p.all[df_p.all['name']=='lebron james',]
+```
+
+## Example Deployment of Optimal Model
+```{r eval=F}
+library(plumber)
+r <- plumb("deploy_optimal_model.R")
+r$run(port=8000)
+# Single Player Prediction Command
+```{r eval=F}
+# 2016 LeBron Jame Example
+cmd <- paste(
+          "curl -X POST 'http://localhost:8000/predict_salary?",
+         "mat=0&Age=31&G=76&GS=76&MP=2709&PER=27.5&TS.=.588&X3PAr=0.199&FTr=0.347&ORB.=4.7&DRB.=18.8&",
+         "TRB.=11.8&AST.=36.0&STL.=2.0&BLK.=1.5&TOV.=13.2&USG.=31.4&OWS=9.6&DWS=4&WS=13.6&WS.48=0.242&",
+         "OBPM=6.9&DBPM=2.3&BPM=9.1&VORP=7.6&FG=737&FGA=1416&FG.=0.520&X3P=87&X3PA=282&X3P.=0.309&X2P=650&",
+         "X2PA=1134&X2P.=0.573&eFG.=0.551&FT=359&FTA=491&FT.=0.731&ORB=111&DRB=454&TRB=565&AST=514&STL=104&",
+         "BLK=49&TOV=249&PF=143&PTS=1920",
+         sep='')
 ```
