@@ -31,7 +31,7 @@ Ensure `csp571_fp/` is in your R path when running `code/*.Rmd` files
 `figures/` figures output by `code/*.Rmd` files
 
 `depricated/`
-- `load_data.Rmd` web scrape *every* NBA player from [espn.com](espn.com)
+- `load_data.Rmd` web scrape *every* NBA player from [espn.com](https://www.espn.com)
   - [Lebron James example](https://www.espn.com/nba/player/_/id/1966/lebron-james)
   - dataset was later replaced with `data/raw/primary_dataset_raw.xlsx` from Kaggle
 - `load_2k_data.Rmd` merged into `code/load_clean_explore_data.Rmd`

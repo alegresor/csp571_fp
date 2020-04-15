@@ -83,7 +83,7 @@ lre_modeling <- function(dataset,x_train,y_train,x_test,y_test,alphas,mkplot){
     # plot
     if(mkplot){
       path = sprintf("../figures/elasticnet_models/alpha_%.2f.%s.png",i,dataset)
-      png(file=path,width=5,height=10,units='in',res=1200)
+      png(file=path)
       par(mfrow=c(2,1))
       glmnet_model <- glmnet(x_train, y_train, family="gaussian",alpha=i)
       plot(glmnet_model)
@@ -130,7 +130,7 @@ r$run(port=8000)
 # 2016 LeBron James Example
 cmd <- paste(
           "curl -X POST 'http://localhost:8000/predict_salary?",
-         "mat=0&Age=31&G=76&GS=76&MP=2709&PER=27.5&TS.=.588&X3PAr=0.199&FTr=0.347&ORB.=4.7&DRB.=18.8&",
+         "Age=31&G=76&GS=76&MP=2709&PER=27.5&TS.=.588&X3PAr=0.199&FTr=0.347&ORB.=4.7&DRB.=18.8&",
          "TRB.=11.8&AST.=36.0&STL.=2.0&BLK.=1.5&TOV.=13.2&USG.=31.4&OWS=9.6&DWS=4&WS=13.6&WS.48=0.242&",
          "OBPM=6.9&DBPM=2.3&BPM=9.1&VORP=7.6&FG=737&FGA=1416&FG.=0.520&X3P=87&X3PA=282&X3P.=0.309&X2P=650&",
          "X2PA=1134&X2P.=0.573&eFG.=0.551&FT=359&FTA=491&FT.=0.731&ORB=111&DRB=454&TRB=565&AST=514&STL=104&",
