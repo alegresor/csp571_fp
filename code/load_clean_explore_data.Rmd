@@ -11,7 +11,7 @@ Note: Primary dataset is directly downloaded from Kaggle. This video-game rankin
 library(stringr)
 library(rvest)
 library(tidyr)
-if (!file.exists('data/raw/nba2k/nba2k_16.csv')){ # only run if data is not already scraped
+if (!file.exists('../data/raw/nba2k/nba2k_16.csv')){ # only run if data is not already scraped
 # constants
 root <- 'data/raw/nba2k'
 years <- c(16,17,18,19,20)
@@ -38,7 +38,7 @@ for (i in 1:length(years)){
 ## Clean Primary Dataset
 ```{r message=F}
 library("readxl")
-df_primary <- read_excel('data/raw/primary_dataset_raw.xlsx')
+df_primary <- read_excel('../data/raw/primary_dataset_raw.xlsx')
 df_primary <- df_primary[,!(names(df_primary)%in%c('#','blanl','blank2'))] # drop empty/non-stat columns
 colnames(df_primary)[1:3] <- c('year','name_p','salary')
 df_primary <- df_primary[!is.na(df_primary[['salary']]),] # drop rows with no salaryes
@@ -94,7 +94,7 @@ for (col in categorical_vars){
 secondary_attriutes <- c('name_s','position_s','ovr','out','ins','pla','ath','def','reb')
 df_secondary <- vector('list',9)
 names(df_secondary) <- secondary_attriutes
-path_f = 'data/raw/nba2k/nba2k_%d.csv'
+path_f = '../data/raw/nba2k/nba2k_%d.csv'
 for (year in c(16:20)){
   df_year <- read.csv(sprintf(path_f,year))
   headers <- names(df_year)
@@ -221,9 +221,9 @@ df_p_final <- df_final[,!(names(df_final)%in%s_columns)] # final primary dataset
 df_s_final <- df_final[,c('name',s_columns)] # final secondary dataset
 summary(df_final)
 # Output final complete, primary, and seconday datasets
-write.csv(df_final,'data/pooled/complete.csv',row.names=F)
-write.csv(df_p_final,'data/pooled/primary.csv',row.names=F)
-write.csv(df_s_final,'data/pooled/secondary.csv',row.names=F)
+write.csv(df_final,'../data/pooled/complete.csv',row.names=F)
+write.csv(df_p_final,'../data/pooled/primary.csv',row.names=F)
+write.csv(df_s_final,'../data/pooled/secondary.csv',row.names=F)
 # preview datasets
 head(df_p_final)
 head(df_s_final)
@@ -252,7 +252,7 @@ df_final %>%
       facet_wrap(~ key, scales = "free") + 
       geom_histogram(aes(y=..density..), fill = "grey") + 
       geom_density()
-ggsave("figures/hist_complete_vars.png", width=15, height=13)
+ggsave("../figures/hist_complete_vars.png", width=15, height=13)
 ```
 
 ## Bar Chart of Player by Team from Complete Dataset
@@ -262,7 +262,7 @@ ggplot(df_final, aes(x = Tm)) +
   geom_bar(fill = "grey") + 
   labs(x = "Team", title = "Players per team") +
   theme(axis.text.x=element_text(angle=45,hjust=1,vjust=0.5))
-ggsave("figures/bar_complete_player_per_team.png", width=10, height=7)
+ggsave("../figures/bar_complete_player_per_team.png", width=10, height=7)
 ```
 
 ## Sum of Salaries per Team for Complete Dataset
@@ -281,7 +281,7 @@ df_final %>%
         y = "Sum of salaries",
         title = paste("Sum of salaries per team")) + 
     theme(axis.text.x=element_text(angle=45,hjust=1,vjust=0.5))
-ggsave("figures/bar_complete_sum_salaries_per_team.png", width=10, height=7)
+ggsave("../figures/bar_complete_sum_salaries_per_team.png", width=10, height=7)
 ```
 
 ## Mean Salaries per Team for Complete Dataset
@@ -301,7 +301,7 @@ df_final %>%
         title = paste(
             "mean salary per team")) + 
     theme(axis.text.x=element_text(angle=45,hjust=1,vjust=0.5))
-ggsave("figures/bar_complete_mean_salaries_per_team.png", width=10, height=7)
+ggsave("../figures/bar_complete_mean_salaries_per_team.png", width=10, height=7)
 ```
 
 ## Players in each position
@@ -311,7 +311,7 @@ ggplot(df_final, aes(x = Pos)) +
   geom_bar(fill = "orange") + 
   labs(x = "Position", title = "No of Player for each position") +
   theme_classic()
-ggsave("figures/bar_complete_player_Position.png", width=10, height=7)
+ggsave("../figures/bar_complete_player_Position.png", width=10, height=7)
 ```
 
 ## Mean salaries for each position
@@ -330,7 +330,7 @@ df_final %>%
         y = "mean salary",
         title = paste(
             "mean salary for Position")) 
-ggsave("figures/bar_complete_mean_salaries_for_Position.png", width=10, height=7)
+ggsave("../figures/bar_complete_mean_salaries_for_Position.png", width=10, height=7)
 ```
 
 ## Correlation Matrix for complete dataset
@@ -361,10 +361,10 @@ corrplot(corr_matrix_p,type = "upper")
 ## Save correlation plots.
 ```{r}
 # complete dataset
-png(file = "figures/Correlation_plot_c.png")
+png(file = "../figures/Correlation_plot_c.png")
 corrplot(corr_matrix_c,type = "upper")
 # primary dataset
-png(file = "figures/Correlation_plot_p.png")
+png(file = "../figures/Correlation_plot_p.png")
 corrplot(corr_matrix_p,type = "upper")
 dev.off()
 ```
@@ -474,8 +474,8 @@ nrow(p_train_df)
 nrow(p_test_df)
 names(p_train_df)
 head(p_train_df)
-write.csv(p_train_df,'data/train_test/primary/train.csv')
-write.csv(p_test_df,'data/train_test/primary/test.csv')
+write.csv(p_train_df,'../data/train_test/primary/train.csv')
+write.csv(p_test_df,'../data/train_test/primary/test.csv')
 ```
 
 ## Complete Dataset
@@ -490,8 +490,8 @@ nrow(c_train_df)
 nrow(c_test_df)
 names(c_train_df)
 head(c_train_df)
-write.csv(c_train_df,'data/train_test/complete/train.csv')
-write.csv(c_test_df,'data/train_test/complete/test.csv')
+write.csv(c_train_df,'../data/train_test/complete/train.csv')
+write.csv(c_test_df,'../data/train_test/complete/test.csv')
 ```
 
 

@@ -7,7 +7,7 @@ geometry: margin=.5cm
 
 ## Load Primary Dataset
 ```{r}
-df_p.all <- read.csv('data/pooled/primary.csv')
+df_p.all <- read.csv('../data/pooled/primary.csv')
 df_p.all$year <- as.factor(df_p.all$year)
 str(df_p.all)
 head(df_p.all)
@@ -15,7 +15,7 @@ head(df_p.all)
 
 ## Load Complete (Primary + Secondary) Dataset
 ```{r}
-df_c.all <- read.csv('data/pooled/complete.csv')
+df_c.all <- read.csv('../data/pooled/complete.csv')
 df_c.all$year <- as.factor(df_c.all$year)
 str(df_c.all)
 head(df_c.all)
@@ -67,40 +67,29 @@ ignore <- slr_modeling('primary',df_p.train,df_p.test)
 ignore <- slr_modeling('complete',df_c.train,df_c.test)
 ```
 
-## Lasso, Ridge, and Elastic Net Models with 10-fold Cross validation for alpha = seq(0,1,by=.1)
+## Lasso, Ridge, and Elastic Net Models with 10-fold Cross validation for alpha = seq(0,1,by=.05)
 ```{r message=F}
 library(glmnet)
 # modeling function
 lre_modeling <- function(dataset,x_train,y_train,x_test,y_test,alphas,mkplot){
-  set.seed(7) # seed for reproducibility
   # fit models
   for (i in alphas){
-    model_name <- paste('fit_alpha_',i,sep='')
+    set.seed(7) # seed for reproducibility
+    model_name <- sprintf('fit_alpha_%.2f',i)
     assign(model_name, cv.glmnet(x_train, y_train, type.measure="mse",alpha=i,family="gaussian"))
     model <- get(model_name)
     yhat <- predict(model,s=model$lambda.min,newx=x_test)
-    model_results(model_name,dataset,y_test,yhat)}
-  # plot
-  if(mkplot){
-    path = sprintf("figures/lasso_ridge_elasticnet_models_%s.png",dataset)
-    png(file=path,width=5,height=15,units='in',res=1200)
-    par(mfrow=c(6,1))
-    #    lasso
-    lasso_model <- glmnet(x_train, y_train, family="gaussian", alpha=1)
-    lasso_model_cv <- get('fit_alpha_1')
-    plot(lasso_model,main="LASSO")
-    plot(lasso_model_cv,xvar="lambda")
-    #    ridge
-    ridge_model <- glmnet(x_train, y_train, family="gaussian", alpha=0)
-    ridge_model_cv <- get('fit_alpha_0')
-    plot(ridge_model,main="Ridge")
-    plot(ridge_model_cv,xvar="lambda")
-    #    elastic net
-    enet_model <- glmnet(x_train, y_train, family="gaussian", alpha=.5)
-    enet_model_cv <- get('fit_alpha_0.5')
-    plot(enet_model,main="Elastic Net")
-    plot(enet_model_cv,xvar="lambda")
-    dev.off()}
+    model_results(model_name,dataset,y_test,yhat)
+    # plot
+    if(mkplot){
+      path = sprintf("../figures/elasticnet_models/alpha_%.2f.%s.png",i,dataset)
+      png(file=path,width=5,height=10,units='in',res=1200)
+      par(mfrow=c(2,1))
+      glmnet_model <- glmnet(x_train, y_train, family="gaussian",alpha=i)
+      plot(glmnet_model)
+      title(sprintf('Elasticnet Model, %s dataset, alpha = %.2f',dataset,i),line=3)
+      plot(model,xvar='lambda')      
+      dev.off()}}
   return(model)} # return final model created
 # extract train/test datasets of only numeric variables as required by glmnet models
 #    primary dataset
@@ -119,21 +108,22 @@ x_test.c <- data.matrix(df_c.test[,numeric_x_vars.c])
 y_test.c <- df_c.test[['salary']]
 # train/test Simple Linear Regression models
 mkplots <- FALSE # change to TRUE if you want to generate plots
-ignore <- lre_modeling('primary',x_train.p,y_train.p,x_test.p,y_test.p,seq(0,1,by=.1),mkplots)
-ignore <- lre_modeling('complete',x_train.c,y_train.c,x_test.c,y_test.c,seq(0,1,by=.1),mkplots)
+ignore <- lre_modeling('primary',x_train.p,y_train.p,x_test.p,y_test.p,seq(0,1,by=.05),mkplots)
+ignore <- lre_modeling('complete',x_train.c,y_train.c,x_test.c,y_test.c,seq(0,1,by=.05),mkplots)
 ```
 
 ## Save Optimal Model to File
 Optimal model with largest R^2 Test and lowest MSE is elasticnet model with alpha = .1
 ```{r}
 optimal_model <- lre_modeling('primary',x_train.p,y_train.p,x_test.p,y_test.p,c(0.1),FALSE)
-saveRDS(optimal_model,file='data/optimal_model.rds')
+sprintf('optimal lambda = %.1f',optimal_model$lambda.min)
+saveRDS(optimal_model,file='../data/optimal_model.elasticnet.rds')
 ```
 
 ## Example Deployment of Optimal Model
 ```{r eval=F}
 library(plumber)
-r <- plumb("deploy_optimal_model.R")
+r <- plumb("./deploy_optimal_model.R")
 r$run(port=8000)
 # Single Player Prediction Command
 ```{r eval=F}
@@ -147,3 +137,14 @@ cmd <- paste(
          "BLK=49&TOV=249&PF=143&PTS=1920",
          sep='')
 ```
+
+## Prediction from Optimal
+```{r}
+df_p.all.copy <- df_p.all
+x <- data.matrix(df_p.all[,numeric_x_vars.p])
+df_p.all.copy$salary_hat_elasticnet <- as.vector(predict(optimal_model,s=optimal_model$lambda.min,newx=x))
+df_p.all.copy <- df_p.all.copy[,c('name','salary','salary_hat_elasticnet')]
+head(df_p.all.copy)
+write.csv(df_p.all.copy,'../data/predictions/elasticnet.csv')
+```
+

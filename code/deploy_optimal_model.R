@@ -3,7 +3,7 @@
 library(plumber)
 library(glmnet)
 library(methods)
-model <- readRDS(file='data/optimal_model.rds')
+model <- readRDS(file='../data/optimal_model.elasticnet.rds')
 
 #' @param Age age
 #' @param G games
