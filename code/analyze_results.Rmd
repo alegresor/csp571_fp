@@ -5,19 +5,19 @@ output: pdf_document
 geometry: margin=.5cm
 ---
 
-## Load Results from Optimal ElasticNet Model
+## Load Results from SLR Model
 ```{r}
-df_enet <- read.csv('../data/predictions/elasticnet.csv')
-head(df_enet)
+df <- read.csv('../data/predictions/slr.csv')
+head(df)
 ```
 
 ## Plot Salary vs Predicted Salary
 ```{r message=F}
 library(ggplot2)
-ggplot(df_enet,aes(x=salary,y=salary_hat_elasticnet)) + 
+ggplot(df,aes(x=salary,y=salary_hat)) + 
   geom_point() +
   geom_smooth()
-ggsave("../figures/elasticnet_salary_vs_prediction_scatter.png", width=10, height=7)
+ggsave("../figures/slr_salary_vs_prediction_scatter.png", width=10, height=7)
 ```
 
 ## Plot Salary vs Redisual Prediction
@@ -25,11 +25,11 @@ Appears to be a positive linear trend between the salary and residuals. \
 Thus, the optimal elasticnet model tends to underestimate players with higher salaries.  
 ```{r message=F}
 library(ggplot2)
-residual <- df_enet$salary - df_enet$salary_hat_elasticnet
-ggplot(df_enet, aes(x=salary,y=residual)) + 
+residual <- df$salary - df$salary_hat
+ggplot(df, aes(x=salary,y=residual)) + 
   geom_point() + 
   geom_smooth()
-ggsave("../figures/elasticnet_salary_vs_residual_scatter.png", width=10, height=7)
+ggsave("../figures/slr_salary_vs_residual_scatter.png", width=10, height=7)
 ```
 
 ## Underrated Players in 2016
@@ -38,11 +38,11 @@ $\hat{salary}-salary > \frac{1}{2} salary$\
 Players who our model classifies as underrated tend to get higher salaries the next year
 ```{r}
 # get underrated players in 2016
-df_underrated_2016 <- df_enet[
-  ((df_enet$salary_hat_elasticnet-df_enet$salary) > (df_enet$salary/2)) & 
-  df_enet$year==2016,]
+df_underrated_2016 <- df[
+  ((df$salary_hat-df$salary) > (df$salary/2)) & 
+  df$year==2016,]
 # link with 2017 stats
-df_underrated_2017 <- df_enet[(df_enet$name%in%df_underrated_2016$name)&(df_enet$year==2017),]
+df_underrated_2017 <- df[(df$name%in%df_underrated_2016$name)&(df$year==2017),]
 df_underrated <- merge(df_underrated_2016,df_underrated_2017,all.x=F,all.y=F,by='name')
 names(df_underrated) <- c('name','2016','salary_2016','salary_hat_2016','2017','salary_2017','salary_hat_2017')
 df_underrated <- df_underrated[,c('name','salary_2016','salary_hat_2016','salary_2017','salary_hat_2017')]
@@ -61,11 +61,11 @@ An overrated player is any player who should be making 50% more\
 $salary-\hat{salary} > \frac{1}{2} salary$\
 Hard for players who have high salaries to get a salary cut despite lacking stats
 ```{r}
-df_overrated_216 <- df_enet[
-  ((df_enet$salary-df_enet$salary_hat_elasticnet) > (df_enet$salary/2)) & 
-  df_enet$year==2016,]
+df_overrated_216 <- df[
+  ((df$salary-df$salary_hat) > (df$salary/2)) & 
+  df$year==2016,]
 # link with 2017 stats
-df_overrated_2017 <- df_enet[(df_enet$name%in%df_overrated_216$name)&(df_enet$year==2017),]
+df_overrated_2017 <- df[(df$name%in%df_overrated_216$name)&(df$year==2017),]
 df_overrated <- merge(df_overrated_216,df_overrated_2017,all.x=F,all.y=F,by='name')
 names(df_overrated) <- c('name','2016','salary_2016','salary_hat_2016','2017','salary_2017','salary_hat_2017')
 df_overrated <- df_overrated[,c('name','salary_2016','salary_hat_2016','salary_2017','salary_hat_2017')]
