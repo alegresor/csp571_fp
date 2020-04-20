@@ -41,6 +41,14 @@ nrow(df_c.train)
 nrow(df_c.test)
 ```
 
+## Load Train/Test Datasets Resulting from Variable Selection
+```{r}
+df_p_vs.train = read.csv('../data/train_test/primary/train.csv')
+df_p_vs.test = read.csv('../data/train_test/primary/test.csv')
+df_c_vs.train = read.csv('../data/train_test/complete/train.csv')
+df_c_vs.test = read.csv('../data/train_test/complete/test.csv')
+```
+
 ### Modeling Helper Functions
 ```{r}
 r_squared <- function(y,yHat){1-sum((y-yHat)^2)/sum((y-mean(y))^2)}
@@ -48,14 +56,14 @@ mse <- function(y,yHat){mean((y-yHat)^2)}
 model_results <- function(model,dataset,y,yHat){
   r2_test <- r_squared(y,yHat)
   mse_test <- mse(y,yHat)
-  cat(sprintf('Model: %-25s Dataset: %-10s R^2 Test: %-10.3f MSE: %-10.3e\n',model,dataset,r2_test,mse_test))}
+  cat(sprintf('Model: %-25s Dataset: %-15s R^2 Test: %-10.3f MSE: %-10.3e\n',model,dataset,r2_test,mse_test))}
 ```
 
 ## Simple Linear Regression Models
 ```{r}
 # modeling function
 slr_modeling <- function(dataset,df_train,df_test){
-  model <- 'simple linear regression'
+  model <- 'SLR'
   x_vars <- names(df_train)[!(names(df_train)%in%c('name','salary','X2P','X2PA','TRB','PTS'))]
   f <- as.formula(sprintf('salary ~ `%s`',paste(x_vars,collapse='` + `')))
   slr_model <- lm(f,data=df_train)
@@ -65,6 +73,8 @@ slr_modeling <- function(dataset,df_train,df_test){
 # train/test Simple Linear Regression models
 ignore <- slr_modeling('primary',df_p.train,df_p.test)
 ignore <- slr_modeling('complete',df_c.train,df_c.test)
+ignore <- slr_modeling('primary VS',df_p_vs.train,df_p_vs.test) # primary variable subset
+ignore <- slr_modeling('complete VS',df_c_vs.train,df_c_vs.test) # complete variable subset
 ```
 
 ## Lasso, Ridge, and Elastic Net Models with 10-fold Cross validation for alpha = seq(0,1,by=.05)
@@ -120,7 +130,7 @@ sprintf('optimal lambda = %.1f',optimal_model$lambda.min)
 saveRDS(optimal_model,file='../data/optimal_model.elasticnet.rds')
 ```
 
-## Example Deployment of Optimal Model
+## Deployment of Optimal Model
 ```{r eval=F}
 library(plumber)
 r <- plumb("./deploy_optimal_model.R")
@@ -138,7 +148,7 @@ cmd <- paste(
          sep='')
 ```
 
-## Prediction from Optimal
+## Prediction from Optimal Model
 ```{r}
 df_p.all.copy <- df_p.all
 x <- data.matrix(df_p.all[,numeric_x_vars.p])

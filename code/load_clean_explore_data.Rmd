@@ -371,28 +371,22 @@ dev.off()
 
 ## Detecting Outliers
 ```{r}
-plot = function(variable)
-{
+plot = function(variable){
   print(variable)
-  ggplot(df_final,aes(x = df_final[,variable], y = salary)) + geom_point() + theme_classic() + labs(x=variable)
-}
-
+  ggplot(df_final,aes(x = df_final[,variable], y = salary)) + geom_point() + theme_classic() + labs(x=variable)}
 
 library(gridExtra)
 p = list()
 p <- NULL
 val <- 0
 d <- df_final[,4:ncol(df_final)]
-for(j in 1:5)
-{
-  for(i in 1:11) {
-  name = names(d[i+val])
-  p[[i]] = plot(as.character(name))
-  }
+for(j in 1:5){
+  for(i in 1:11){
+    name = names(d[i+val])
+    p[[i]] = plot(as.character(name))}
   val = i+val
-do.call(grid.arrange,p)
-p <- NULL
-}
+  do.call(grid.arrange,p)
+  p <- NULL}
 ```
 
 # VARIABLE SELECTION
@@ -474,8 +468,8 @@ nrow(p_train_df)
 nrow(p_test_df)
 names(p_train_df)
 head(p_train_df)
-write.csv(p_train_df,'../data/train_test/primary/train.csv')
-write.csv(p_test_df,'../data/train_test/primary/test.csv')
+write.csv(p_train_df,'../data/train_test/primary/train.csv',row.names=F)
+write.csv(p_test_df,'../data/train_test/primary/test.csv',row.names=F)
 ```
 
 ## Complete Dataset
@@ -490,8 +484,8 @@ nrow(c_train_df)
 nrow(c_test_df)
 names(c_train_df)
 head(c_train_df)
-write.csv(c_train_df,'../data/train_test/complete/train.csv')
-write.csv(c_test_df,'../data/train_test/complete/test.csv')
+write.csv(c_train_df,'../data/train_test/complete/train.csv',row.names=F)
+write.csv(c_test_df,'../data/train_test/complete/test.csv',row.names=F)
 ```
 
 
