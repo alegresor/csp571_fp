@@ -2,10 +2,10 @@
 
 ## Members
 
-- Aleksei Sorokin
-- Hyungtaeg Oh
-- Arjuna Anilkumar
-- Hardev Ranglani
+- Aleksei Sorokin (alegresor) [asorokin@hawk.iit.edu](mailto:asorokin@hawk.iit.edu)
+- Hyungtaeg Oh (ohtack) [hoh12@hawk.iit.edu](mailto:hoh12@hawk.iit.edu)
+- Arjuna Anilkumar (arjuna12009) [aanilkumar@hawk.iit.edu](mailto:aanilkumar@hawk.iit.edu)
+- Hardev Ranglani (hardevr01) [hranglani@hawk.iit.edu](mailto:hranglani@hawk.iit.edu)
 
 ## Reproducibility
 Ensure `csp571_fp/` is in your R path when running `code/*.Rmd` files
