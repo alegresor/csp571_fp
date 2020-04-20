@@ -83,6 +83,30 @@ ignore <- slr_modeling('primary VS',df_p_vs.train,df_p_vs.test) # primary variab
 ignore <- slr_modeling('complete VS',df_c_vs.train,df_c_vs.test) # complete variable subset
 ```
 
+### SLR Plot R^2
+```{r message=F}
+library(ggplot2)
+r2_data <- as.data.frame(list(
+  dataset = c('Primary All','Complete All','Primary Subset','Complete Subset'),
+  r2 =      c(.464,         .469,            .519,          .526)))
+ggplot(data=r2_data, aes(x=dataset, y=r2)) + 
+  geom_bar(stat="identity", fill="steelblue") +
+  theme_minimal()
+ggsave("../figures/slr_r2_bar.png");
+```
+
+### SLR Plot RMSE
+```{r message=F}
+library(ggplot2)
+rmse_data <- as.data.frame(list(
+  dataset = c('Primary All','Complete All','Primary Subset','Complete Subset'),
+  rmse_millions =      c(5.17,         5.07,          4.89,           4.85)))
+ggplot(data=rmse_data, aes(x=dataset, y=rmse_millions)) + 
+  geom_bar(stat="identity", fill="lightgreen") +
+  theme_minimal()
+ggsave("../figures/slr_rmse_bar.png");
+```
+
 ## Lasso, Ridge, and Elastic Net Models with 10-fold Cross validation for alpha = seq(0,1,by=.05)
 ```{r message=F}
 library(glmnet)
@@ -138,6 +162,7 @@ saveRDS(optimal_model,file='../data/optimal_model/slr/model.rds')
 saveRDS(levels(df_c_vs.train$year),file='../data/optimal_model/slr/year_levels.rds')
 saveRDS(levels(df_c_vs.train$Pos),file='../data/optimal_model/slr/Pos_levels.rds')
 saveRDS(levels(df_c_vs.train$Tm),file='../data/optimal_model/slr/Tm_levels.rds')
+summary(optimal_model)
 ```
 
 ## Deployment of Optimal Model
@@ -151,9 +176,9 @@ r$run(port=8000)
 ```{r eval=F}
 # 2016 LeBron James Example
 df_c_vs.train[df_c_vs.train$name=='lebron james'&df_c_vs.train$year=='2016',]
-cmd <- "curl -X POST 'http://localhost:8000/predict_salary?\
-        year=2016&POS=SF&Age=31&Tm=CLE&G=76&MP=2709X3PAr=0.199&\
-        TOV.=13.2&DWS=4&DBPM=2.3&BPM=9.1&FG=737&STL=104&PF=143&ovr=99'"
+cmd <- 'curl -X POST "http://127.0.0.1:8000/predict_salary?\
+        ovr=99&PF=143&STL=104&FG.=.52&BPM=9.1&DBPM=2.3&DWS=4&\
+        TOV.=13.2&X3PAr=.199&MP=2709&G=76&Tm=CLE&Age=31&Pos=SF&year=2016"'
 ```
 
 ## Prediction from Optimal Model
