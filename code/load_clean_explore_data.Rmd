@@ -49,6 +49,8 @@ library(Amelia)
 missCounts <- sapply(df_primary,function(x) sum(is.na(x)))
 missCounts
 missmap(df_primary, main = "Missing values ")
+dev.copy(png,"../figures/Missing values/Missing_value_before_primary.png")
+dev.off()
 
 # Replacing the missng values with mean
 df_primary$`3P%`[is.na(df_primary$`3P%`)] <- mean(df_primary$`3P%` , na.rm = T)
@@ -61,9 +63,12 @@ df_primary$`TS%`[is.na(df_primary$`TS%`)] <- mean(df_primary$`TS%` , na.rm = T)
 df_primary$`3PAr`[is.na(df_primary$`3PAr`)] <- mean(df_primary$`3PAr` , na.rm = T)
 df_primary$`FTr`[is.na(df_primary$`FTr`)] <- mean(df_primary$`FTr` , na.rm = T)
 
+
 missCounts <- sapply(df_primary,function(x) sum(is.na(x)))
 missCounts
 missmap(df_primary, main = "Missing values ")
+dev.copy(png,"../figures/Missing values/Missing_value_after_primary.png")
+dev.off()
 
 df_primary <- df_primary[df_primary$year%in%c(2016:2020),]   # take 2016-2017 player data
 head(df_primary)
@@ -131,6 +136,8 @@ missCounts <- sapply(df_secondary,function(x) sum(is.na(x)))
 missCounts
 library(Amelia)
 missmap(df_secondary, main = "Missing values ")
+dev.copy(png,"../figures/Missing values/Missing_value_secondary.png")
+dev.off()
 
 df_secondary <- df_secondary[df_secondary$year%in%c(2016,2017),]   # take 2016-2017 2K ratings data
 head(df_secondary)
@@ -416,12 +423,14 @@ for(j in 1:5){
 
 ## Detecting outliers
 ```{r}
-mod <- lm(salary ~ ., data=df_final)
+mod <- lm(salary ~ .-salary, data=df_final)
 cooksd <- cooks.distance(mod)
 
 plot(cooksd, pch="*", cex=2, main="Outliers")  # plot cook's distance
 abline(h = 4*mean(cooksd, na.rm=T), col="red")  # add cutoff line. Those observations that have a cook’s distance greater than 4 times the mean may be classified as influential. 
 text(x=1:length(cooksd)+1, y=cooksd, labels=ifelse(cooksd>4*mean(cooksd, na.rm=T),names(cooksd),""), col="red")  # add labels
+dev.copy(png,"../figures/Missing values/outliers.png")
+dev.off()
 
 # All outliers
 influential <- as.numeric(names(cooksd)[(cooksd > 4*mean(cooksd, na.rm=T))])  # influential row numbers
@@ -533,6 +542,13 @@ c_subset_formula
 c_subset_lm <- lm(c_subset_formula , data=c_train_df)
 summary(c_subset_lm)
 sort(vif(c_subset_lm),decreasing=T) # All variables have low VIF values. So no multicollinearity.
+
+c_seleced[['names.kept']] <- c_seleced[['names.kept']][!(c_seleced[['names.kept']]%in%c("FGA"))]
+c_subset_formula <- get_salary_formula(c_seleced[['names.kept']])
+c_subset_formula
+c_subset_lm <- lm(c_subset_formula , data=c_train_df)
+summary(c_subset_lm)
+sort(vif(c_subset_lm),decreasing=T)
 c_vars_final <- c_seleced[['names.kept']]
 ```
 
@@ -543,11 +559,17 @@ v <- c(p_vars_final,"salary")
 corr_matrix_c <- cor(Filter(is.numeric,p_train_df[v]),method = "pearson")
 library(corrplot)
 corrplot(corr_matrix_c,type = "upper")
+dev.copy(png,"../figures/Correlation_selected_variables_primary.png")
+dev.off()
 
 v <- c(c_vars_final,"salary")
 corr_matrix_c <- cor(Filter(is.numeric,c_train_df[v]),method = "pearson")
+correlation_salary_c <- sort(corr_matrix_c[,'salary'],decreasing = TRUE)
+correlation_salary_c
 library(corrplot)
 corrplot(corr_matrix_c,type = "upper")
+dev.copy(png,"../figures/Correlation_selected_variables_complete.png")
+dev.off()
 ```
 
 
