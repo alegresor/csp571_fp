@@ -51,8 +51,11 @@ missCounts
 missmap(df_primary, main = "Missing values ")
 dev.copy(png,"../figures/Missing values/Missing_value_before_primary.png")
 dev.off()
+sum(missCounts)
+nrow(df_primary)
 
 # Replacing the missng values with mean
+
 df_primary$`3P%`[is.na(df_primary$`3P%`)] <- mean(df_primary$`3P%` , na.rm = T)
 df_primary$`FT%`[is.na(df_primary$`FT%`)] <- mean(df_primary$`FT%` , na.rm = T)
 df_primary$`TOV%`[is.na(df_primary$`TOV%`)] <- mean(df_primary$`TOV%` , na.rm = T)
@@ -206,7 +209,6 @@ replace_names <- list(
   `isiah thomas` = 'isaiah thomas',
   `jonathan simmons` = 'jonathon simmons',
   `lance stepheson` = 'lance stephenson',
-  `luke babbitt` = 'luke babbit',
   `luke babbit` = 'luke babbitt',
   `patrick beverly` = 'patrick beverley',
   `willis reed` = 'willie reed',
@@ -273,6 +275,7 @@ head(df_final)
 
 # Explore Data
 
+
 ## Summarize Datasets
 ```{r}
 # primary dataset
@@ -295,7 +298,7 @@ df_final %>%
       geom_density()
 ggsave("../figures/hist_complete_vars.png", width=15, height=13)
 ```
-## Salary boxplot
+## Salary variable
 ```{r}
 boxplot(df_final$salary)
 
@@ -303,6 +306,23 @@ ggplot(df_final, aes(x = salary)) + geom_histogram(fill = "grey")
 
 ggplot(df_final, aes(x = salary)) + geom_density()
 
+layout(mat = matrix(c(1,2),2,1, byrow=TRUE), height = c(1,8))
+par(mar=c(0, 3.1, 1.1, 2.1))
+boxplot(df_final$salary , horizontal=TRUE , xaxt="n", frame=F, main=sprintf('Histogram of salary'))
+par(mar=c(4, 3.1, 1.1, 2.1))
+hist(df_final$salary,main='', xlab = "salary", ylab = "count")
+```
+
+## salary stats
+```{r}
+mean(df_p_final$salary)
+median(df_p_final$salary)
+getmode <- function(v) {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+result <- getmode(df_p_final$salary)
+print(result)
 ```
 
 ## Bar Chart of Player by Team from Complete Dataset
@@ -313,6 +333,8 @@ ggplot(df_final, aes(x = Tm)) +
   labs(x = "Team", title = "Players per team") +
   theme(axis.text.x=element_text(angle=45,hjust=1,vjust=0.5))
 ggsave("../figures/bar_complete_player_per_team.png", width=10, height=7)
+
+ggplot(df_final, aes(x=reorder(Tm,Tm,FUN = length), fill = Pos)) + geom_bar() + xlab("Team") + coord_flip()
 ```
 
 ## Sum of Salaries per Team for Complete Dataset
@@ -342,8 +364,9 @@ ggsave("../figures/bar_complete_mean_salaries_per_team.png", width=10, height=7)
 
 ## Players in each position
 ```{r}
+nrow(df_p_final)
 library(ggplot2)
-ggplot(df_final, aes(x = Pos)) + 
+ggplot(df_p_final, aes(x = Pos)) + 
   geom_bar(fill = "orange") + 
   labs(x = "Position", title = "No of Player in each position") +
   theme_classic()
@@ -421,21 +444,61 @@ for(j in 1:5){
   p <- NULL}
 ```
 
+
+
+## selecting relevant variables 
+```{r}
+
+rel_p <- c("name","year","salary","Pos","Age","Tm","GS","MP","PER","TS%","TRB%","AST%","STL%","BLK%","TOV%","USG%","WS","BPM","VORP","FG","FG%","3P","3P%","2P","2P%","eFG%","FT","FT%","AST","PF","PTS" )
+
+rel_c <- c("name","year","salary","Pos","Age","Tm","GS","MP","PER","TS%","TRB%","AST%","STL%","BLK%","TOV%","USG%","WS","BPM","VORP","FG","FG%","3P","3P%","2P","2P%","eFG%","FT","FT%","AST","PF","PTS","ovr","out","ins","pla","ath","def","reb" )
+
+
+df_p_final_relevant <- df_p_final[names(df_p_final) %in% rel_p]
+head(df_p_final_relevant)
+df_final_relevant <- df_final[names(df_final) %in% rel_c]
+head(df_final_relevant)
+
+```
+
+## correlation plot of relevant variables
+```{r}
+library(corrplot)
+# primary dataset
+corr_matrix_p_relevant <- cor(Filter(is.numeric,df_p_final_relevant[2:ncol(df_p_final_relevant)]),method = "pearson")
+correlation_salary_p_relevant <- sort(df_p_final_relevant[,'salary'],decreasing = TRUE)
+
+# complete dataset
+corr_matrix_c_relevant <- cor(Filter(is.numeric,df_final_relevant[2:ncol(df_final_relevant)]),method = "pearson")
+correlation_salary_c_relevant <- sort(df_final_relevant[,'salary'],decreasing = TRUE)
+
+png(file = "../figures/Correlation_plot_c_relevant.png")
+corrplot(corr_matrix_c_relevant,type = "upper")
+# primary dataset
+png(file = "../figures/Correlation_plot_p_relevant.png")
+corrplot(corr_matrix_p_relevant,type = "upper")
+dev.off()
+```
+
+
+
 ## Detecting outliers
 ```{r}
-mod <- lm(salary ~ .-salary, data=df_final)
+mod <- lm(salary ~ .-salary-name-Pos, data=df_final_relevant)
 cooksd <- cooks.distance(mod)
 
 plot(cooksd, pch="*", cex=2, main="Outliers")  # plot cook's distance
-abline(h = 4*mean(cooksd, na.rm=T), col="red")  # add cutoff line. Those observations that have a cook’s distance greater than 4 times the mean may be classified as influential. 
-text(x=1:length(cooksd)+1, y=cooksd, labels=ifelse(cooksd>4*mean(cooksd, na.rm=T),names(cooksd),""), col="red")  # add labels
+abline(h = 8*mean(cooksd, na.rm=T), col="red")  # add cutoff line. Those observations that have a cook’s distance greater than 8 times the mean may be classified as influential. 
+text(x=1:length(cooksd)+1, y=cooksd, labels=ifelse(cooksd>8*mean(cooksd, na.rm=T),names(cooksd),""), col="red")  # add labels
 dev.copy(png,"../figures/Missing values/outliers.png")
 dev.off()
 
 # All outliers
-influential <- as.numeric(names(cooksd)[(cooksd > 4*mean(cooksd, na.rm=T))])  # influential row numbers
+influential <- as.numeric(names(cooksd)[(cooksd > 8*mean(cooksd, na.rm=T))])  # influential row numbers
 influential <- na.omit(influential)
-df_final[influential, ]
+df_final_relevant[influential, names(df_final_relevant) %in% c("name","year","salary","Pos","Age","Tm","GS","MP","AST%","WS","FG%","3P%","2P%","FT%","PF","PTS" )]
+
+
 
 # Treating the outliers by capping them.
 # x <- df_final$salary
@@ -448,13 +511,6 @@ df_final[influential, ]
 
 # VARIABLE SELECTION
 
-## Subset Primary and Complete Dataframes to Include Only Name, Salary, and Selected Variables
-```{r}
-p_vars_subset <- c('name','salary',p_vars_final)
-df_p_subset_final <- df_p_final[,p_vars_subset]
-c_vars_subset <- c('name','salary',c_vars_final)
-df_c_subset_final <- df_final[,c_vars_subset]
-```
 # Split Train-Test
 
 ```{r message=F}
@@ -474,6 +530,15 @@ names(p_train_df)
 head(p_train_df)
 write.csv(p_train_df,'../data/train_test/primary/train.csv',row.names=F)
 write.csv(p_test_df,'../data/train_test/primary/test.csv',row.names=F)
+
+train_rows_relevant <- createDataPartition(y=df_p_final_relevant[,'salary'], list=FALSE, p=.8)
+p_train_relevant_df <- df_p_final_relevant[train_rows,]
+p_test_relevant_df <- df_p_final_relevant[-train_rows,]
+stopifnot(nrow(p_train_relevant_df) + nrow(p_test_relevant_df) == nrow(df_p_final_relevant))
+head(p_train_relevant_df)
+head(p_test_relevant_df)
+write.csv(p_train_relevant_df,'../data/train_test/primary/train_relevant.csv',row.names=F)
+write.csv(p_test_relevant_df,'../data/train_test/primary/test_relevant.csv',row.names=F)
 ```
 
 ## Complete Dataset
@@ -490,6 +555,15 @@ names(c_train_df)
 head(c_train_df)
 write.csv(c_train_df,'../data/train_test/complete/train.csv',row.names=F)
 write.csv(c_test_df,'../data/train_test/complete/test.csv',row.names=F)
+
+train_rows_relevant <- createDataPartition(y=df_final_relevant[,'salary'], list=FALSE, p=.8)
+c_train_relevant_df <- df_final_relevant[train_rows,]
+c_test_relevant_df <- df_final_relevant[-train_rows,]
+stopifnot(nrow(c_train_relevant_df) + nrow(c_test_relevant_df) == nrow(df_final_relevant))
+head(c_train_relevant_df)
+head(c_test_relevant_df)
+write.csv(c_train_relevant_df,'../data/train_test/complete/train_relevant.csv',row.names=F)
+write.csv(c_test_relevant_df,'../data/train_test/complete/test_relevant.csv',row.names=F)
 ```
 
 ## Helper Functions
@@ -501,11 +575,11 @@ get_salary_formula <- function(x_vars){
 ## Primary Dataset Variable Selection Using Automated F-Test-Based Backward Selection
 ```{r}
 library(rms)
-p_x_vars <- names(p_train_df)[!(names(p_train_df))%in%c('salary','name','2P','2PA','PTS','TRB')]
+p_x_vars <- names(p_train_relevant_df)[!(names(p_train_relevant_df))%in%c('salary','name','2P','PTS')]
 # 2P, 2PA, PTS, and TRB were causing singularity in predictor matrix, so they were dropped
 p_formula <- get_salary_formula(p_x_vars)
 p_formula
-p_selection_model <- ols(p_formula, data = p_train_df)
+p_selection_model <- ols(p_formula, data = p_train_relevant_df)
 p_selection_model
 p_seleced <- fastbw(p_selection_model, rule = "p", sls = 0.1)
 p_seleced
@@ -515,21 +589,21 @@ p_seleced
 ```{r}
 p_subset_formula <- get_salary_formula(p_seleced[['names.kept']])
 p_subset_formula
-p_subset_lm <- lm(p_subset_formula , data=p_train_df)
+p_subset_lm <- lm(p_subset_formula , data=p_train_relevant_df)
 summary(p_subset_lm)
 sort(vif(p_subset_lm),decreasing=T) # All variables have low VIF values. So no multicollinearity.
 p_vars_final <- p_seleced[['names.kept']]
-plot(p_subset_lm )
 ```
 
 ## Complete Dataset Variable Selection Using Automated F-Test-Based Backward Selection
 ```{r message=F}
 library(rms)
-c_x_vars <- names(c_train_df)[!(names(c_train_df)%in%c('salary','name','2P','2PA','PTS','TRB'))]
+
+c_x_vars <- names(c_train_relevant_df)[!(names(c_train_relevant_df)%in%c('salary','name','2P','PTS'))]
 # 2P, 2PA, PTS, and TRB were causing singularity in predictor matrix, so they were dropped
 c_formula <- get_salary_formula(c_x_vars)
 c_formula
-c_selection_model <- ols(c_formula, data = c_train_df)
+c_selection_model <- ols(c_formula, data = c_train_relevant_df)
 c_selection_model
 c_seleced <- fastbw(c_selection_model, rule = "p", sls = 0.1)
 c_seleced
@@ -539,18 +613,25 @@ c_seleced
 ```{r}
 c_subset_formula <- get_salary_formula(c_seleced[['names.kept']])
 c_subset_formula
-c_subset_lm <- lm(c_subset_formula , data=c_train_df)
+c_subset_lm <- lm(c_subset_formula , data=c_train_relevant_df)
 summary(c_subset_lm)
 sort(vif(c_subset_lm),decreasing=T) # All variables have low VIF values. So no multicollinearity.
 
 c_seleced[['names.kept']] <- c_seleced[['names.kept']][!(c_seleced[['names.kept']]%in%c("FGA"))]
 c_subset_formula <- get_salary_formula(c_seleced[['names.kept']])
 c_subset_formula
-c_subset_lm <- lm(c_subset_formula , data=c_train_df)
+c_subset_lm <- lm(c_subset_formula , data=c_train_relevant_df)
 summary(c_subset_lm)
 sort(vif(c_subset_lm),decreasing=T)
 c_vars_final <- c_seleced[['names.kept']]
+
+pred <- predict(c_subset_lm, c_test_relevant_df)
+SST8 <- sum((c_test_relevant_df$salary - mean(c_test_relevant_df$salary))^2)
+SSR8 <- sum((pred - mean(c_test_relevant_df$salary))^2)
+Rsqm8<-SSR8/SST8 
+Rsqm8
 ```
+
 
 
 ## Correlation plots for relevant variables for complete and primary dataset
@@ -573,6 +654,32 @@ dev.off()
 ```
 
 
+## Subset Primary and Complete Dataframes to Include Only Name, Salary, and Selected Variables
+```{r}
+p_vars_subset <- c('name','salary',p_vars_final)
+df_p_subset_final <- df_p_final[,p_vars_subset]
+
+c_vars_subset <- c('name','salary',c_vars_final)
+df_c_subset_final <- df_final[,c_vars_subset]
+
+train_rows_relevant <- createDataPartition(y=df_p_subset_final[,'salary'], list=FALSE, p=.8)
+p_train_selected_df <- df_p_subset_final[train_rows,]
+p_test_selected_df <- df_p_subset_final[-train_rows,]
+stopifnot(nrow(p_train_selected_df) + nrow(p_test_selected_df) == nrow(df_p_subset_final))
+head(p_train_selected_df)
+head(p_test_selected_df)
+write.csv(p_train_selected_df,'../data/train_test/primary/train_selected.csv',row.names=F)
+write.csv(p_test_selected_df,'../data/train_test/primary/test_selected.csv',row.names=F)
+
+train_rows_relevant <- createDataPartition(y=df_c_subset_final[,'salary'], list=FALSE, p=.8)
+c_train_selected_df <- df_c_subset_final[train_rows,]
+c_test_selected_df <- df_c_subset_final[-train_rows,]
+stopifnot(nrow(c_train_selected_df) + nrow(c_test_selected_df) == nrow(df_c_subset_final))
+head(c_train_selected_df)
+head(c_test_selected_df)
+write.csv(c_train_selected_df,'../data/train_test/complete/train_selected.csv',row.names=F)
+write.csv(c_test_selected_df,'../data/train_test/complete/test_selected.csv',row.names=F)
+```
 
 
 
