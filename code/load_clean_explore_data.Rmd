@@ -285,7 +285,7 @@ str(df_s_final)
 ```
 
 ## Complete Dataset Histograms
-```{r eval=F}
+```{r}
 library(purrr)
 library(tidyr)
 library(ggplot2)
@@ -458,7 +458,6 @@ rel_c <- c("name","year","salary","Pos","Age","Tm","GS","MP","PER","TS%","TRB%",
 df_p_final_relevant <- df_p_final[names(df_p_final) %in% rel_p]
 head(df_p_final_relevant)
 df_final_relevant <- df_final[names(df_final) %in% rel_c]
-head(df_final_relevant)
 
 ```
 
@@ -473,11 +472,14 @@ correlation_salary_p_relevant <- sort(df_p_final_relevant[,'salary'],decreasing 
 corr_matrix_c_relevant <- cor(Filter(is.numeric,df_final_relevant[2:ncol(df_final_relevant)]),method = "pearson")
 correlation_salary_c_relevant <- sort(df_final_relevant[,'salary'],decreasing = TRUE)
 
-png(file = "../figures/Correlation_plot_c_relevant.png")
+
 corrplot(corr_matrix_c_relevant,type = "upper")
+dev.copy(png,"../figures/Correlation_plot_c_relevant.png")
+dev.off()
+
 # primary dataset
-png(file = "../figures/Correlation_plot_p_relevant.png")
 corrplot(corr_matrix_p_relevant,type = "upper")
+dev.copy(png,"../figures/Correlation_plot_p_relevant.png")
 dev.off()
 ```
 
@@ -485,23 +487,21 @@ dev.off()
 
 ## Detecting outliers
 ```{r}
-mod <- lm(salary ~ .-salary-name-Pos, data=df_final_relevant)
+df_cook <- df_final_relevant[which(sapply(df_final_relevant,is.numeric))]
+mod <- lm(salary ~ ., data = df_cook )
 cooksd <- cooks.distance(mod)
 
+# plot(cooksd, pch="*", cex=2, main="Influential Obs by Cooks distance")  # plot cook's distance
+# abline(h = 4*mean(cooksd, na.rm=T), col="red")  # add cutoff line
+# text(x=1:length(cooksd)+1, y=cooksd, labels=ifelse(cooksd>4*mean(cooksd, na.rm=T),names(cooksd),""), #col="red")
+# dev.copy(png,"../figures/Missing values/outliers.png")
+# dev.off()
+
 # All outliers
-influential <- as.numeric(names(cooksd)[(cooksd > 8*mean(cooksd, na.rm=T))])  # influential row numbers
+influential <- as.numeric(names(cooksd)[(cooksd > 9*mean(cooksd, na.rm=T))])  # influential row numbers
 influential <- na.omit(influential)
 df_final_relevant[influential, names(df_final_relevant) %in% c("name","year","salary","Pos","Age","Tm","GS","MP","AST%","WS","FG%","3P%","2P%","FT%","PF","PTS" )]
 
-
-
-# Treating the outliers by capping them.
-# x <- df_final$salary
-# qnt <- quantile(x, probs=c(.25, .75), na.rm = T)
-# caps <- quantile(x, probs=c(.05, .95), na.rm = T)
-# H <- 1.5 * IQR(x, na.rm = T)
-# x[x < (qnt[1] - H)] <- caps[1]
-# x[x > (qnt[2] + H)] <- caps[2]
 ```
 
 ### Plot Cook's Distance
