@@ -300,6 +300,7 @@ ggsave("../figures/hist_complete_vars.png", width=15, height=13)
 ```
 ## Salary variable
 ```{r}
+library(ggplot2)
 boxplot(df_final$salary)
 
 ggplot(df_final, aes(x = salary)) + geom_histogram(fill = "grey")
@@ -487,12 +488,6 @@ dev.off()
 mod <- lm(salary ~ .-salary-name-Pos, data=df_final_relevant)
 cooksd <- cooks.distance(mod)
 
-plot(cooksd, pch="*", cex=2, main="Outliers")  # plot cook's distance
-abline(h = 8*mean(cooksd, na.rm=T), col="red")  # add cutoff line. Those observations that have a cook’s distance greater than 8 times the mean may be classified as influential. 
-text(x=1:length(cooksd)+1, y=cooksd, labels=ifelse(cooksd>8*mean(cooksd, na.rm=T),names(cooksd),""), col="red")  # add labels
-dev.copy(png,"../figures/Missing values/outliers.png")
-dev.off()
-
 # All outliers
 influential <- as.numeric(names(cooksd)[(cooksd > 8*mean(cooksd, na.rm=T))])  # influential row numbers
 influential <- na.omit(influential)
@@ -509,7 +504,16 @@ df_final_relevant[influential, names(df_final_relevant) %in% c("name","year","sa
 # x[x > (qnt[2] + H)] <- caps[2]
 ```
 
-# VARIABLE SELECTION
+### Plot Cook's Distance
+```{r eval=F}
+##plot(cooksd, pch="*", cex=2, main="Outliers")  # plot cook's distance
+##abline(h = 8*mean(cooksd, na.rm=T), col="red")  # add cutoff line. Those observations that have a cook’s distance greater than 8 times the mean may be classified as influential. 
+##text(x=1:length(cooksd)+1, y=cooksd, labels=ifelse(cooksd>8*mean(cooksd, na.rm=T),names(cooksd),""), col="red")  # add labels
+##dev.copy(png,"../figures/Missing values/outliers.png")
+##dev.off()
+```
+
+# Variable Selection
 
 # Split Train-Test
 
@@ -573,7 +577,7 @@ get_salary_formula <- function(x_vars){
 ```
 
 ## Primary Dataset Variable Selection Using Automated F-Test-Based Backward Selection
-```{r}
+```{r message=F}
 library(rms)
 p_x_vars <- names(p_train_relevant_df)[!(names(p_train_relevant_df))%in%c('salary','name','2P','PTS')]
 # 2P, 2PA, PTS, and TRB were causing singularity in predictor matrix, so they were dropped
