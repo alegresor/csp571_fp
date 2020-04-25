@@ -491,12 +491,6 @@ df_cook <- df_final_relevant[which(sapply(df_final_relevant,is.numeric))]
 mod <- lm(salary ~ ., data = df_cook )
 cooksd <- cooks.distance(mod)
 
-# plot(cooksd, pch="*", cex=2, main="Influential Obs by Cooks distance")  # plot cook's distance
-# abline(h = 4*mean(cooksd, na.rm=T), col="red")  # add cutoff line
-# text(x=1:length(cooksd)+1, y=cooksd, labels=ifelse(cooksd>4*mean(cooksd, na.rm=T),names(cooksd),""), #col="red")
-# dev.copy(png,"../figures/Missing values/outliers.png")
-# dev.off()
-
 # All outliers
 influential <- as.numeric(names(cooksd)[(cooksd > 9*mean(cooksd, na.rm=T))])  # influential row numbers
 influential <- na.omit(influential)
@@ -506,11 +500,13 @@ df_final_relevant[influential, names(df_final_relevant) %in% c("name","year","sa
 
 ### Plot Cook's Distance
 ```{r eval=F}
-##plot(cooksd, pch="*", cex=2, main="Outliers")  # plot cook's distance
-##abline(h = 8*mean(cooksd, na.rm=T), col="red")  # add cutoff line. Those observations that have a cook’s distance greater than 8 times the mean may be classified as influential. 
-##text(x=1:length(cooksd)+1, y=cooksd, labels=ifelse(cooksd>8*mean(cooksd, na.rm=T),names(cooksd),""), col="red")  # add labels
-##dev.copy(png,"../figures/Missing values/outliers.png")
-##dev.off()
+plot(cooksd, pch="*", cex=2, main="Outliers")  # plot cook's distance
+abline(h = 8*mean(cooksd, na.rm=T), col="red")
+# add cutoff line. Those observations that have a cook’s distance greater than 8
+# times the mean may be classified as influential. 
+text(x=1:length(cooksd)+1, y=cooksd, labels=ifelse(cooksd>8*mean(cooksd, na.rm=T),names(cooksd),""), col="red")  # add labels
+dev.copy(png,"../figures/Missing values/outliers.png")
+dev.off()
 ```
 
 # Variable Selection

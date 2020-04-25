@@ -43,14 +43,12 @@ nrow(df_c.test)
 
 ## Load Train/Test Datasets Resulting from Variable Selection
 ```{r}
-df_p_vs.train = read.csv('../data/train_test/primary/train.csv')
+df_p_vs.train = read.csv('../data/train_test/primary/train_selected.csv')
 df_p_vs.train$year <- as.factor(df_p_vs.train$year)
-df_p_vs.test = read.csv('../data/train_test/primary/test.csv')
+df_p_vs.test = read.csv('../data/train_test/primary/test_selected.csv')
 df_p_vs.test$year <- as.factor(df_p_vs.test$year)
-df_c_vs.train = read.csv('../data/train_test/complete/train.csv')
-df_c_vs.train$year <- as.factor(df_c_vs.train$year)
-df_c_vs.test = read.csv('../data/train_test/complete/test.csv')
-df_c_vs.test$year <- as.factor(df_c_vs.test$year)
+df_c_vs.train = read.csv('../data/train_test/complete/train_selected.csv')
+df_c_vs.test = read.csv('../data/train_test/complete/test_selected.csv')
 ```
 
 ### Modeling Helper Functions
@@ -155,38 +153,36 @@ ignore <- lre_modeling('complete',x_train.c,y_train.c,x_test.c,y_test.c,seq(0,1,
 ## Save Optimal Model to File
 Optimal model with largest R^2 Test and smallest MSE is SLR on Complete Backwards Selected Variables
 ```{r}
-optimal_model <- slr_modeling('complete VS',df_c_vs.train,df_c_vs.test) # complete variable subset
-str(df_c_vs.train)
-saveRDS(optimal_model,file='../data/optimal_model/slr/model.rds')
-# save factor levels for input encoding 
-saveRDS(levels(df_c_vs.train$year),file='../data/optimal_model/slr/year_levels.rds')
-saveRDS(levels(df_c_vs.train$Pos),file='../data/optimal_model/slr/Pos_levels.rds')
-saveRDS(levels(df_c_vs.train$Tm),file='../data/optimal_model/slr/Tm_levels.rds')
-summary(optimal_model)
+numeric_x_vars.c
+optimal_model <- lre_modeling('complete',x_train.c,y_train.c,x_test.c,y_test.c,c(0),mkplots)
+optimal_model$lambda.min
+saveRDS(optimal_model,file='../data/optimal_model/elasticnet/model.rds')
 ```
 
 ## Deployment of Optimal Model
 ```{r eval=F}
 library(plumber)
+paste(
+  "curl -X POST 'http://localhost:8000/predict_salary?",
+  "Age=31&G=76&GS=76&MP=2709&PER=27.5&TS.=.588&X3PAr=0.199&FTr=0.347&ORB.=4.7&DRB.=18.8&",
+  "TRB.=11.8&AST.=36.0&STL.=2.0&BLK.=1.5&TOV.=13.2&USG.=31.4&OWS=9.6&DWS=4&WS=13.6&WS.48=0.242&",
+  "OBPM=6.9&DBPM=2.3&BPM=9.1&VORP=7.6&FG=737&FGA=1416&FG.=0.520&X3P=87&X3PA=282&X3P.=0.309&X2P=650&",
+  "X2PA=1134&X2P.=0.573&eFG.=0.551&FT=359&FTA=491&FT.=0.731&ORB=111&DRB=454&TRB=565&AST=514&STL=104&",
+  "BLK=49&TOV=249&PF=143&PTS=1920&out=94&ovr=99&ins=89&pla=91&ath=92&def=91&reb=91'",
+  sep='')
+df_c.train[df_c.train$name=='lebron james'&df_c.train$year=='2016',]
 r <- plumb("./deploy_optimal_model.R")
 r$run(port=8000)
-```
-
-### Single Player Prediction Command
-```{r eval=F}
-# 2016 LeBron James Example
-df_c_vs.train[df_c_vs.train$name=='lebron james'&df_c_vs.train$year=='2016',]
-cmd <- 'curl -X POST "http://127.0.0.1:8000/predict_salary?\
-        ovr=99&PF=143&STL=104&FG.=.52&BPM=9.1&DBPM=2.3&DWS=4&\
-        TOV.=13.2&X3PAr=.199&MP=2709&G=76&Tm=CLE&Age=31&Pos=SF&year=2016"'
 ```
 
 ## Prediction from Optimal Model
 ```{r}
 df_c.all.copy <- df_c.all
-df_c.all.copy$salary_hat <- predict(optimal_model,df_c.all.copy)
-df_c.all.copy <- df_c.all.copy[,c('name','year','salary','salary_hat')]
+x <- data.matrix(df_c.all[,numeric_x_vars.c])
+df_c.all.copy$salary_hat_elasticnet <- as.vector(predict(optimal_model,s=optimal_model$lambda.min,newx=x))
+df_c.all.copy <- df_c.all.copy[,c('name','year','salary','salary_hat_elasticnet')]
+names(df_c.all.copy) <- c('name','year','salary','salary_hat')
 head(df_c.all.copy)
-write.csv(df_c.all.copy,'../data/predictions/slr.csv',row.names=F)
+write.csv(df_c.all.copy,'../data/predictions/elasticnet.csv',row.names=F)
 ```
 

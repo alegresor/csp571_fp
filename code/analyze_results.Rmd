@@ -5,9 +5,9 @@ output: pdf_document
 geometry: margin=.5cm
 ---
 
-## Load Results from SLR Model
+## Load Results from Optimal Elasticnet Model
 ```{r}
-df <- read.csv('../data/predictions/slr.csv')
+df <- read.csv('../data/predictions/elasticnet.csv')
 head(df)
 ```
 
@@ -17,7 +17,7 @@ library(ggplot2)
 ggplot(df,aes(x=salary,y=salary_hat)) + 
   geom_point() +
   geom_smooth()
-ggsave("../figures/slr_salary_vs_prediction_scatter.png", width=10, height=7)
+ggsave("../figures/enet_salary_vs_prediction_scatter.png", width=10, height=7)
 ```
 
 ## Plot Salary vs Redisual Prediction
@@ -29,7 +29,7 @@ residual <- df$salary - df$salary_hat
 ggplot(df, aes(x=salary,y=residual)) + 
   geom_point() + 
   geom_smooth()
-ggsave("../figures/slr_salary_vs_residual_scatter.png", width=10, height=7)
+ggsave("../figures/enet_salary_vs_residual_scatter.png", width=10, height=7)
 ```
 
 ## Underrated Players in 2016
@@ -71,6 +71,9 @@ names(df_overrated) <- c('name','2016','salary_2016','salary_hat_2016','2017','s
 df_overrated <- df_overrated[,c('name','salary_2016','salary_hat_2016','salary_2017','salary_hat_2017')]
 df_overrated
 # calculate percent decrease factor
-p_decrease <- 100*mean((df_overrated$salary_2016-df_overrated$salary_2017) > 0)
-sprintf('Percent of overrated players in 2016 whose salary decreased for 2017: %.1f%%',p_decrease)
+sal_factor_2016 = .0
+p_decrease<- 100*mean(
+  (df_overrated$salary_2016-df_overrated$salary_2017) > sal_factor_2016*df_overrated$salary_2016)
+sprintf(
+  'Percent of overrated players in 2016 whose salary decreased by more than 25%% for 2017: %.1f%%',p_decrease)
 ```
