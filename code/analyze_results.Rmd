@@ -8,7 +8,7 @@ geometry: margin=.5cm
 ## Load Results from Optimal Elasticnet Model
 ```{r}
 df <- read.csv('../data/predictions/elasticnet.csv')
-head(df)
+df[df$name=='lebron james',]
 ```
 
 ## Plot Salary vs Predicted Salary
