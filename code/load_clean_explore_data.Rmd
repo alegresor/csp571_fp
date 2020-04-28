@@ -495,7 +495,7 @@ cooksd <- cooks.distance(mod)
 influential <- as.numeric(names(cooksd)[(cooksd > 9*mean(cooksd, na.rm=T))])  # influential row numbers
 influential <- na.omit(influential)
 df_final_relevant[influential, names(df_final_relevant) %in% c("name","year","salary","Pos","Age","Tm","GS","MP","AST%","WS","FG%","3P%","2P%","FT%","PF","PTS" )]
-
+df_final_relevant <- df_final_relevant[-influential,]
 ```
 
 ### Plot Cook's Distance
