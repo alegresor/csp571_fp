@@ -76,6 +76,7 @@ slr_modeling <- function(dataset,df_train,df_test){
 names(df_p.train)
 ignore <- slr_modeling('primary',df_p.train,df_p.test)
 ignore <- slr_modeling('complete',df_c.train,df_c.test)
+summary(ignore)
 names(df_p_vs.train)
 ignore <- slr_modeling('primary VS',df_p_vs.train,df_p_vs.test) # primary variable subset
 ignore <- slr_modeling('complete VS',df_c_vs.train,df_c_vs.test) # complete variable subset
@@ -164,19 +165,22 @@ saveRDS(optimal_model,file='../data/optimal_model/elasticnet/model.rds')
 library(plumber)
 paste(
   "curl -X POST 'http://localhost:8000/predict_salary?",
-  "Age=31&G=76&GS=76&MP=2709&PER=27.5&TS.=.588&X3PAr=0.199&FTr=0.347&ORB.=4.7&DRB.=18.8&",
-  "TRB.=11.8&AST.=36.0&STL.=2.0&BLK.=1.5&TOV.=13.2&USG.=31.4&OWS=9.6&DWS=4&WS=13.6&WS.48=0.242&",
-  "OBPM=6.9&DBPM=2.3&BPM=9.1&VORP=7.6&FG=737&FGA=1416&FG.=0.520&X3P=87&X3PA=282&X3P.=0.309&X2P=650&",
-  "X2PA=1134&X2P.=0.573&eFG.=0.551&FT=359&FTA=491&FT.=0.731&ORB=111&DRB=454&TRB=565&AST=514&STL=104&",
-  "BLK=49&TOV=249&PF=143&PTS=1920&out=94&ovr=99&ins=89&pla=91&ath=92&def=91&reb=91'",
+  "Age=31&G=76&GS=76&MP=2709&PER=27.5&TS.=.588&X3PAr=0.199&",
+  "FTr=0.347&ORB.=4.7&DRB.=18.8&TRB.=11.8&AST.=36.0&STL.=2.0&",
+  "BLK.=1.5&TOV.=13.2&USG.=31.4&OWS=9.6&DWS=4&WS=13.6&",
+  "WS.48=0.242&OBPM=6.9&DBPM=2.3&BPM=9.1&VORP=7.6&FG=737&",
+  "FGA=1416&FG.=0.520&X3P=87&X3PA=282&X3P.=0.309&X2P=650&",
+  "X2PA=1134&X2P.=0.573&eFG.=0.551&FT=359&FTA=491&FT.=0.731&",
+  "ORB=111&DRB=454&TRB=565&AST=514&STL=104&BLK=49&TOV=249&",
+  "PF=143&PTS=1920&out=94&ovr=99&ins=89&pla=91&ath=92&def=91&reb=91'",
   sep='')
-df_c.train[df_c.train$name=='lebron james'&df_c.train$year=='2016',]
 r <- plumb("./deploy_optimal_model.R")
 r$run(port=8000)
 ```
 
 ## Prediction from Optimal Model
 ```{r}
+df_c.train[df_c.train$name=='lebron james'&df_c.train$year=='2016',]
 df_c.all.copy <- df_c.all
 x <- data.matrix(df_c.all[,numeric_x_vars.c])
 df_c.all.copy$salary_hat_elasticnet <- as.vector(predict(optimal_model,s=optimal_model$lambda.min,newx=x))
