@@ -25,6 +25,7 @@ Ensure `csp571_fp/` is in your R path when running `code/*.Rmd` files
 - `models_and_deployment.Rmd` build prediction models
 - `deploy_optimal_model.R` deploy optimal model with API using *plumber* package
 - `analyze_results.Rmd` explore optimal model predictions
+- `ML_Models_Results.ipynb` machine learning models in python 
 
 `code_pdfs/` pdf renderings of `code/*.Rmd` files
 
